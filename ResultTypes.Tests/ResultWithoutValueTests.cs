@@ -8,7 +8,7 @@ public class ResultWithoutValueTests
   [Test]
   public void ImplicitConversionToBool_ReturnsTrue_WhenSuccess()
   {
-    // ARRANGE
+    // ACT
     bool result = Result<int>.Success;
 
     // ASSERT
@@ -49,7 +49,7 @@ public class ResultWithoutValueTests
     var errorResult = Result<int>.Error(ErrorValue);
     var exception = new TestException();
 
-    // ASSERT
+    // ACT & ASSERT
     Assert.That(() => errorResult.OrThrow(exception), Throws.InstanceOf<TestException>());
   }
 
@@ -60,8 +60,8 @@ public class ResultWithoutValueTests
     var successResult = Result<int>.Success;
     var exception = new TestException();
 
-    // ASSERT
-    Assert.DoesNotThrow(() => successResult.OrThrow(exception));
+    // ACT & ASSERT
+    Assert.That(() => successResult.OrThrow(exception), Throws.Nothing);
   }
 
   [Test]
@@ -70,7 +70,7 @@ public class ResultWithoutValueTests
     // ARRANGE
     var successResult = Result<int>.Success;
 
-    // ASSERT
+    // ACT & ASSERT
     Assert.Multiple(() =>
     {
       Assert.That(successResult.IsError(), Is.False);
@@ -84,7 +84,7 @@ public class ResultWithoutValueTests
     // ARRANGE
     var errorResult = Result<int>.Error(ErrorValue);
 
-    // ASSERT
+    // ACT & ASSERT
     Assert.Multiple(() =>
     {
       Assert.That(errorResult.IsError(), Is.True);
@@ -104,6 +104,4 @@ public class ResultWithoutValueTests
     // ASSERT
     Assert.That(error, Is.EqualTo(ErrorValue));
   }
-
-  private class TestException : Exception { }
 }

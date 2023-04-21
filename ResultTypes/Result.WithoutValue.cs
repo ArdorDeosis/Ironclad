@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Http.Headers;
 using JetBrains.Annotations;
 
 namespace Ironclad.ResultTypes;
@@ -7,6 +8,7 @@ namespace Ironclad.ResultTypes;
 /// Represents the result of an operation that may produce an error of type <typeparamref name="TError"/>.
 /// </summary>
 /// <typeparam name="TError">The type of the error.</typeparam>
+/// <remarks>Can implicitly be converted to a <see cref="bool"/>, indicating whether the operation succeeded.</remarks>
 [PublicAPI]
 public class Result<TError>
 {

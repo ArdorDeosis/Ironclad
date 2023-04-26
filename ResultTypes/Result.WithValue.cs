@@ -39,6 +39,14 @@ public class Result<TValue, TError>
   public static implicit operator TValue(Result<TValue, TError> result) => result.success
     ? result.value
     : throw new InvalidOperationException("Cannot convert a failed result to a value.");
+  
+  /// <summary>
+  /// Implicitly converts a successful <see cref="Result{TValue,TError}"/> to a <see cref="Result{TError}"/>.
+  /// </summary>
+  /// <param name="result">The result to convert.</param>
+  public static implicit operator Result<TError>(Result<TValue, TError> result) => result.success
+    ? Result<TError>.Success
+    : result.error;
 
   /// <summary>
   /// Implicitly converts a value to a successful <see cref="Result{TValue,TError}"/>.

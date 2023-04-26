@@ -4,6 +4,7 @@ namespace Ironclad.ResultTypes.Tests;
 public class ResultWithoutValueTests
 {
   private const int ErrorValue = 0xBEEF;
+  private static readonly Result<int> ErrorResult = Result<int>.Error(ErrorValue);
 
   [Test]
   public void ImplicitConversionToBool_ReturnsTrue_WhenSuccess()
@@ -18,11 +19,8 @@ public class ResultWithoutValueTests
   [Test]
   public void ImplicitConversionToBool_ReturnsFalse_WhenError()
   {
-    // ARRANGE
-    var errorResult = Result<int>.Error(ErrorValue);
-
     // ACT
-    bool result = errorResult;
+    bool result = ErrorResult;
 
     // ASSERT
     Assert.That(result, Is.False);
@@ -43,63 +41,68 @@ public class ResultWithoutValueTests
   }
 
   [Test]
+  public void ImplicitConversionFromError_CreatesResultWithErrorValue()
+  {
+    // ACT
+    Result<int> result = ErrorValue;
+    result.IsError(out var value);
+
+    // ASSERT
+    Assert.That(value, Is.EqualTo(ErrorValue));
+  }
+
+  [Test]
+  public void CreatedError_HasCorrectValue()
+  {
+    // ACT
+    var result = Result<int>.Error(ErrorValue);
+    result.IsError(out var value);
+
+    // ASSERT
+    Assert.That(value, Is.EqualTo(ErrorValue));
+  }
+
+  [Test]
   public void OrThrow_ThrowsException_WhenResultIsError()
   {
-    // ARRANGE
-    var errorResult = Result<int>.Error(ErrorValue);
-    var exception = new TestException();
-
     // ACT & ASSERT
-    Assert.That(() => errorResult.OrThrow(exception), Throws.InstanceOf<TestException>());
+    Assert.That(() => ErrorResult.OrThrow(new TestException()), Throws.InstanceOf<TestException>());
   }
 
   [Test]
   public void OrThrow_DoesNotThrowException_WhenResultIsSuccess()
   {
-    // ARRANGE
-    var successResult = Result<int>.Success;
-    var exception = new TestException();
-
     // ACT & ASSERT
-    Assert.That(() => successResult.OrThrow(exception), Throws.Nothing);
+    Assert.That(() => Result<int>.Success.OrThrow(new TestException()), Throws.Nothing);
   }
 
   [Test]
   public void IsError_ReturnsFalse_WhenResultIsSuccess()
   {
-    // ARRANGE
-    var successResult = Result<int>.Success;
-
     // ACT & ASSERT
     Assert.Multiple(() =>
     {
-      Assert.That(successResult.IsError(), Is.False);
-      Assert.That(successResult.IsError(out _), Is.False);
+      Assert.That(Result<int>.Success.IsError(), Is.False);
+      Assert.That(Result<int>.Success.IsError(out _), Is.False);
     });
   }
 
   [Test]
   public void IsError_ReturnsTrue_WhenResultIsError()
   {
-    // ARRANGE
-    var errorResult = Result<int>.Error(ErrorValue);
-
     // ACT & ASSERT
     Assert.Multiple(() =>
     {
-      Assert.That(errorResult.IsError(), Is.True);
-      Assert.That(errorResult.IsError(out _), Is.True);
+      Assert.That(ErrorResult.IsError(), Is.True);
+      Assert.That(ErrorResult.IsError(out _), Is.True);
     });
   }
 
   [Test]
   public void IsError_OutParameterIsErrorValue_WhenResultIsError()
   {
-    // ARRANGE
-    var errorResult = Result<int>.Error(ErrorValue);
-
     // ACT
-    errorResult.IsError(out var error);
+    ErrorResult.IsError(out var error);
 
     // ASSERT
     Assert.That(error, Is.EqualTo(ErrorValue));

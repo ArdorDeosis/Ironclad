@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Net.Http.Headers;
 using JetBrains.Annotations;
 
 namespace Ironclad.ResultTypes;
@@ -65,7 +64,7 @@ public class Result<TError>
   /// Determines whether the operation produced an error.
   /// </summary>
   /// <returns><c>true</c> if the operation produced an error; otherwise, <c>false</c>.</returns>
-  public bool IsError() => IsError(out _);
+  public bool IsError() => !success;
 
   /// <summary>
   /// Determines whether the operation produced an error and gets the error value, if any.
@@ -73,7 +72,7 @@ public class Result<TError>
   /// <param name="error">The error value produced by the operation, if any.</param>
   /// <returns><c>true</c> if the operation produced an error; otherwise, <c>false</c>.</returns>
   [SuppressMessage("ReSharper", "ParameterHidesMember")]
-  public bool IsError([NotNullWhen(true)] out TError? error)
+  public bool IsError(out TError error)
   {
     error = this.error;
     return !success;

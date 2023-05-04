@@ -47,7 +47,7 @@ public class Result<TValue, TError>
   public static implicit operator Result<TError>(Result<TValue, TError> result) => result.success
     ? Result<TError>.Success
     : result.error;
-
+  
   /// <summary>
   /// Implicitly converts a value to a successful <see cref="Result{TValue,TError}"/>.
   /// </summary>
@@ -99,7 +99,7 @@ public class Result<TValue, TError>
   /// <summary>
   /// Indicates whether the result is an error.
   /// </summary>
-  public bool IsError() => IsError(out _);
+  public bool IsError() => !success;
 
   /// <summary>
   /// Indicates whether the result is an error and retrieves the error value.

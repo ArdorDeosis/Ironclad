@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyName>Ironclad.Relations.Playground</AssemblyName>
+        <RootNamespace>Ironclad.Relations.Playground</RootNamespace>
+    </PropertyGroup>
+
+</Project>

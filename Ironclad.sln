@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ResultTypes.Playground", "R
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ResultTypes.CodeAnalysis.Tests", "ResultTypes.CodeAnalysis.Tests\ResultTypes.CodeAnalysis.Tests.csproj", "{2E56B21E-0FFA-4C04-97BB-A5119CA20B01}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Relations.Playground", "Relations.Playground\Relations.Playground.csproj", "{8E818A31-2D6D-4BDD-8329-820BC3C930C9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,5 +50,9 @@ Global
 		{2E56B21E-0FFA-4C04-97BB-A5119CA20B01}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2E56B21E-0FFA-4C04-97BB-A5119CA20B01}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2E56B21E-0FFA-4C04-97BB-A5119CA20B01}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E818A31-2D6D-4BDD-8329-820BC3C930C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E818A31-2D6D-4BDD-8329-820BC3C930C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E818A31-2D6D-4BDD-8329-820BC3C930C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E818A31-2D6D-4BDD-8329-820BC3C930C9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Net;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.FlowAnalysis;
@@ -36,7 +37,7 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
     // context.RegisterOperationAction(MarkInvocations, OperationKind.Invocation);
     // context.RegisterOperationAction(MarkProperties, OperationKind.PropertyReference);
 
-    context.RegisterOperationBlockAction(CheckOperation);
+    context.RegisterOperationBlockAction(AnalyzeOperationBlocks);
   }
 
 
@@ -54,28 +55,53 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
   {
     foreach (var operationBlock in context.OperationBlocks)
     {
+      Console.WriteLine("### NEW OPERATION BLOCK ###");
       var graph = context.GetControlFlowGraph(operationBlock);
       var transitionedStates =
         new Dictionary<BasicBlock /* to */, Dictionary<BasicBlock /* from */, Dictionary<ISymbol, ResultState>>>();
       var blocksToBeAnalyzed = new List<BasicBlock>(graph.Blocks);
+      Console.WriteLine($"found {blocksToBeAnalyzed.Count}");
 
       // iterate all blocks until you find one that has all predecessor block-state-transitions or the list is empty
       while (blocksToBeAnalyzed.Find(block => AllPredecessorStatesAreCalculated(block, transitionedStates)) is
                { } block &&
              blocksToBeAnalyzed.Remove(block))
       {
+        Console.WriteLine($"analyzing block {block.Ordinal}");
         // get state from block-state-transition dictionary (combine multiple if necessary)
         IEnumerable<Dictionary<ISymbol, ResultState>> incomingStates =
           transitionedStates.TryGetValue(block, out var stateDict)
             ? stateDict.Values
             : Array.Empty<Dictionary<ISymbol, ResultState>>();
         var initialState = CombineStates(incomingStates);
+        PrintState(initialState);
 
         // TODO: analyze operations while updating state
         foreach (var operation in block.Operations)
         {
-          // check if operation triggers warning
-          // check if operation changes state
+          if (operation.IsImplicitResultToValueConversion(out var symbol))
+          {
+            var name = symbol switch
+            {
+              ILocalSymbol local => local.Name,
+              IFieldSymbol field => field.Name,
+              not null => symbol.GetType().Name,
+              null => "null",
+            };
+            Console.WriteLine($"found implicit conversion of {name}");
+            if (initialState.TryGetValue(symbol, out var resultState))
+            {
+              if (resultState is ResultState.Error)
+                Console.WriteLine("    is error! => log error");
+              else
+                Console.WriteLine("    is success");
+            }
+            else
+            {
+              Console.WriteLine("    has no state, setting it ti success now");
+              initialState.Add(symbol, ResultState.Success);
+            }
+          }
         }
 
         if (block.BranchValue is not null)
@@ -85,8 +111,27 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
 
         // saving state(s) (condition-separated) to block-state-transition dictionary
 
+        if (block is { FallThroughSuccessor.Destination: { } fallthrough })
+        {
+          if (!transitionedStates.ContainsKey(fallthrough))
+            transitionedStates.Add(fallthrough, new Dictionary<BasicBlock, Dictionary<ISymbol, ResultState>>());
+          transitionedStates[fallthrough].Add(block,
+            new Dictionary<ISymbol, ResultState>(initialState, SymbolEqualityComparer.Default));
+        }
+        
+        if (block is { ConditionalSuccessor.Destination: { } conditional})
+        {
+          if (!transitionedStates.ContainsKey(conditional))
+            transitionedStates.Add(conditional, new Dictionary<BasicBlock, Dictionary<ISymbol, ResultState>>());
+          transitionedStates[conditional].Add(block,
+            new Dictionary<ISymbol, ResultState>(initialState, SymbolEqualityComparer.Default));
+        }
+
+        return;
+          
+        
         // not branching
-        if (block is { ConditionKind: ControlFlowConditionKind.None, FallThroughSuccessor.Source: { } successor })
+        if (block is { ConditionKind: ControlFlowConditionKind.None, FallThroughSuccessor.Destination: { } successor })
         {
           if (!transitionedStates.ContainsKey(successor))
             transitionedStates.Add(successor, new Dictionary<BasicBlock, Dictionary<ISymbol, ResultState>>());
@@ -96,7 +141,7 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
         // branching but with the same state (should be combined with the above case)
         else if (block.BranchValue is null /* or it does not change the state */)
         {
-          if (block.FallThroughSuccessor is { Source: { } fallThroughSuccessor })
+          if (block.FallThroughSuccessor is { Destination: { } fallThroughSuccessor })
           {
             if (!transitionedStates.ContainsKey(fallThroughSuccessor))
               transitionedStates.Add(fallThroughSuccessor,
@@ -105,7 +150,7 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
               new Dictionary<ISymbol, ResultState>(initialState, SymbolEqualityComparer.Default));
           }
 
-          if (block.ConditionalSuccessor is { Source: { } conditionalSuccessor })
+          if (block.ConditionalSuccessor is { Destination: { } conditionalSuccessor })
           {
             if (!transitionedStates.ContainsKey(conditionalSuccessor))
               transitionedStates.Add(conditionalSuccessor,
@@ -139,6 +184,15 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
           }
         }
       }
+    }
+
+    void PrintState(Dictionary<ISymbol, ResultState> state)
+    {
+      Console.Write("state:");
+      if (state.Count is 0)
+        Console.WriteLine(" empty");
+      foreach (var singleState in state)
+        Console.WriteLine($"  {singleState.Key}: {singleState.Value}");
     }
 
     // checks whether all predecessor states are 
@@ -243,7 +297,7 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
     var conversion = (IConversionOperation)context.Operation;
     var operand = conversion.Operand.Type as INamedTypeSymbol;
 
-    if (!operand.IsResultType())
+    if (!operand.IsResultType(out _))
       return;
 
     if (operand.TypeParameters.Length != 2 ||

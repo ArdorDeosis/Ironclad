@@ -8,6 +8,14 @@ using Microsoft.CodeAnalysis.Testing.Verifiers;
 
 namespace ResultTypes.CodeAnalysis.Tests;
 
+internal class MyTest : CSharpAnalyzerTest<ResultAnalyzer, NUnitVerifier>
+{
+  protected override ProjectState CreateProjectState(ProjectId projectId)
+  {
+    
+  }
+}
+
 internal sealed class AssemblyReferenceTesting
 {
   [Test]

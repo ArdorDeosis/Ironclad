@@ -83,6 +83,5 @@ public class Playground
   public void Test()
   {
     DummyData x = referenceResult;
-
   }
 }

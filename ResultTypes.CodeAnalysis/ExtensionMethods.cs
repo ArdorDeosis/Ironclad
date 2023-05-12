@@ -98,7 +98,7 @@ internal static class ExtensionMethods
   {
     // implicit conversion to value
     if (operation.IsImplicitResultToValueConversion(out _) &&
-        operation.IsConversionFromLocalOrField(out symbol))
+        operation.IsConversionFromLocalOrFieldOrParameter(out symbol))
     {
       state = ResultState.Success;
       return true;
@@ -177,12 +177,12 @@ internal static class ExtensionMethods
     return false;
   }
 
-  internal static bool IsImplicitResultToValueConversion(this IOperation operation, out ISymbol? symbol)
+  internal static bool IsImplicitResultToValueConversion(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
   {
     if (operation is IConversionOperation { Operand.Type: INamedTypeSymbol operand } conversion &&
         operand.IsResultType(out var resultType) && resultType is { ValueType: { } valueType } &&
         valueType.Equals(conversion.Type, SymbolEqualityComparer.Default) && 
-        operation.IsConversionFromLocalOrField(out var variable))
+        operation.IsConversionFromLocalOrFieldOrParameter(out var variable))
     {
       symbol = variable;
       return true;
@@ -214,12 +214,13 @@ internal static class ExtensionMethods
       Type.SpecialType: SpecialType.System_Boolean,
     } && operand.IsResultTypeWithoutValue();
 
-  internal static bool IsConversionFromLocalOrField(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
+  internal static bool IsConversionFromLocalOrFieldOrParameter(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
   {
     symbol = (operation as IConversionOperation)?.Operand switch
     {
       ILocalReferenceOperation { Local: { } local } => local,
       IFieldReferenceOperation { Field: { } field } => field,
+      IParameterReferenceOperation { Parameter: { } parameter } => parameter,
       _ => null,
     };
     return symbol is not null;

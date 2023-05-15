@@ -79,4 +79,9 @@ public class Playground
     var value2 = nullableReferenceResult.Or(nullableReference);
     var value3 = nullableReferenceResult.Or(null);
   }
+
+  public void Test()
+  {
+    DummyData x = referenceResult;
+  }
 }

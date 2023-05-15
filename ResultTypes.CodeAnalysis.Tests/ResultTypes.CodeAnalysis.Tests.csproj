@@ -6,6 +6,10 @@
         <Nullable>enable</Nullable>
 
         <IsPackable>false</IsPackable>
+
+        <OutputType>Library</OutputType>
+
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -17,11 +21,12 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\CodeAnalysis.Testing\CodeAnalysis.Testing.csproj" />
       <ProjectReference Include="..\ResultTypes\ResultTypes.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\ResultTypes.CodeAnalysis\ResultTypes.CodeAnalysis.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+        <ProjectReference Include="..\ResultTypes.CodeAnalysis\ResultTypes.CodeAnalysis.csproj" />
     </ItemGroup>
 
 </Project>

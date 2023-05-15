@@ -19,12 +19,19 @@ public enum ResultState
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 internal sealed class ResultAnalyzer : DiagnosticAnalyzer
 {
-  private static readonly DiagnosticDescriptor Rule = new("IC", "TITLE---", "format", "Naming",
+  public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
+    ImmutableArray.Create(Rule, ImplicitConversionOfError, ImplicitConversionOfUnknown);
+  
+  public static readonly DiagnosticDescriptor Rule = new("IC", "TITLE---", "format", "Naming",
     DiagnosticSeverity.Warning, isEnabledByDefault: true, description: "description.");
-
-  private static DiagnosticDescriptor GetDiagnostic(string message) =>
-    new("IC", message, message, "Naming",
-      DiagnosticSeverity.Warning, true);
+  
+  public static readonly DiagnosticDescriptor ImplicitConversionOfError = new("IC001", "Implicit conversion of Error Result", 
+    "implicit conversion will throw exception", "Ironclad.ResultTypes",
+    DiagnosticSeverity.Error, isEnabledByDefault: true, description: "description");
+  
+  public static readonly DiagnosticDescriptor ImplicitConversionOfUnknown = new("IC002", "Implicit conversion of unknown Result", 
+    "implicit conversion might throw exception", "Ironclad.ResultTypes",
+    DiagnosticSeverity.Warning, isEnabledByDefault: true, description: "description");
 
   public override void Initialize(AnalysisContext context)
   {
@@ -32,51 +39,36 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
     context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.Analyze |
       GeneratedCodeAnalysisFlags.ReportDiagnostics);
 
-    // context.RegisterOperationAction(MarkImplicitConversion, OperationKind.Conversion);
-    // context.RegisterOperationAction(MarkInvocations, OperationKind.Invocation);
-    // context.RegisterOperationAction(MarkProperties, OperationKind.PropertyReference);
-
-    context.RegisterOperationBlockAction(CheckOperation);
-  }
-
-
-  private class BlockTransitionState
-  {
-    public BasicBlock From { get; init; }
-
-    public BasicBlock To { get; init; }
-
-    // IOperation here is either ILocalSymbol or IFieldSymbol
-    public Dictionary<IOperation, ResultState> KnownStates { get; init; }
+    context.RegisterOperationBlockAction(AnalyzeOperationBlocks);
   }
 
   private void AnalyzeOperationBlocks(OperationBlockAnalysisContext context)
   {
     foreach (var operationBlock in context.OperationBlocks)
     {
+      Console.WriteLine("### NEW OPERATION BLOCK ###");
       var graph = context.GetControlFlowGraph(operationBlock);
       var transitionedStates =
         new Dictionary<BasicBlock /* to */, Dictionary<BasicBlock /* from */, Dictionary<ISymbol, ResultState>>>();
       var blocksToBeAnalyzed = new List<BasicBlock>(graph.Blocks);
+      Console.WriteLine($"found {blocksToBeAnalyzed.Count} blocks to analyze");
 
       // iterate all blocks until you find one that has all predecessor block-state-transitions or the list is empty
       while (blocksToBeAnalyzed.Find(block => AllPredecessorStatesAreCalculated(block, transitionedStates)) is
                { } block &&
              blocksToBeAnalyzed.Remove(block))
       {
+        Console.WriteLine($"analyzing block {block.Ordinal}");
         // get state from block-state-transition dictionary (combine multiple if necessary)
         IEnumerable<Dictionary<ISymbol, ResultState>> incomingStates =
           transitionedStates.TryGetValue(block, out var stateDict)
             ? stateDict.Values
             : Array.Empty<Dictionary<ISymbol, ResultState>>();
         var initialState = CombineStates(incomingStates);
+        PrintState(initialState);
 
-        // TODO: analyze operations while updating state
         foreach (var operation in block.Operations)
-        {
-          // check if operation triggers warning
-          // check if operation changes state
-        }
+          AnalyzeOperation(operation, initialState, context);
 
         if (block.BranchValue is not null)
         {
@@ -85,60 +77,31 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
 
         // saving state(s) (condition-separated) to block-state-transition dictionary
 
-        // not branching
-        if (block is { ConditionKind: ControlFlowConditionKind.None, FallThroughSuccessor.Source: { } successor })
+        if (block is { FallThroughSuccessor.Destination: { } fallthrough })
         {
-          if (!transitionedStates.ContainsKey(successor))
-            transitionedStates.Add(successor, new Dictionary<BasicBlock, Dictionary<ISymbol, ResultState>>());
-          transitionedStates[successor].Add(block,
+          if (!transitionedStates.ContainsKey(fallthrough))
+            transitionedStates.Add(fallthrough, new Dictionary<BasicBlock, Dictionary<ISymbol, ResultState>>());
+          transitionedStates[fallthrough].Add(block,
             new Dictionary<ISymbol, ResultState>(initialState, SymbolEqualityComparer.Default));
         }
-        // branching but with the same state (should be combined with the above case)
-        else if (block.BranchValue is null /* or it does not change the state */)
+        
+        if (block is { ConditionalSuccessor.Destination: { } conditional})
         {
-          if (block.FallThroughSuccessor is { Source: { } fallThroughSuccessor })
-          {
-            if (!transitionedStates.ContainsKey(fallThroughSuccessor))
-              transitionedStates.Add(fallThroughSuccessor,
-                new Dictionary<BasicBlock, Dictionary<ISymbol, ResultState>>());
-            transitionedStates[fallThroughSuccessor].Add(block,
-              new Dictionary<ISymbol, ResultState>(initialState, SymbolEqualityComparer.Default));
-          }
-
-          if (block.ConditionalSuccessor is { Source: { } conditionalSuccessor })
-          {
-            if (!transitionedStates.ContainsKey(conditionalSuccessor))
-              transitionedStates.Add(conditionalSuccessor,
-                new Dictionary<BasicBlock, Dictionary<ISymbol, ResultState>>());
-            transitionedStates[conditionalSuccessor].Add(block,
-              new Dictionary<ISymbol, ResultState>(initialState, SymbolEqualityComparer.Default));
-          }
-        }
-        // branching and condition changes state
-        else
-        {
-          IOperation resultSymbol; // get result symbol from block.BranchValue
-          ResultState fallThroughState; // get fall-through state
-          ResultState conditionalState; // get fall-through state
-          if (block.FallThroughSuccessor is { Source: { } fallThroughSuccessor })
-          {
-            if (!transitionedStates.ContainsKey(fallThroughSuccessor))
-              transitionedStates.Add(fallThroughSuccessor,
-                new Dictionary<BasicBlock, Dictionary<ISymbol, ResultState>>());
-            transitionedStates[fallThroughSuccessor].Add(block,
-              new Dictionary<ISymbol, ResultState>(initialState, SymbolEqualityComparer.Default));
-          }
-
-          if (block.ConditionalSuccessor is { Source: { } conditionalSuccessor })
-          {
-            if (!transitionedStates.ContainsKey(conditionalSuccessor))
-              transitionedStates.Add(conditionalSuccessor,
-                new Dictionary<BasicBlock, Dictionary<ISymbol, ResultState>>());
-            transitionedStates[conditionalSuccessor].Add(block,
-              new Dictionary<ISymbol, ResultState>(initialState, SymbolEqualityComparer.Default));
-          }
+          if (!transitionedStates.ContainsKey(conditional))
+            transitionedStates.Add(conditional, new Dictionary<BasicBlock, Dictionary<ISymbol, ResultState>>());
+          transitionedStates[conditional].Add(block,
+            new Dictionary<ISymbol, ResultState>(initialState, SymbolEqualityComparer.Default));
         }
       }
+    }
+
+    void PrintState(Dictionary<ISymbol, ResultState> state)
+    {
+      Console.Write("state:");
+      if (state.Count is 0)
+        Console.WriteLine(" empty");
+      foreach (var singleState in state)
+        Console.WriteLine($"  {singleState.Key}: {singleState.Value}");
     }
 
     // checks whether all predecessor states are 
@@ -168,6 +131,35 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
           .ToDictionary(pair => pair.Key, pair => pair.Value, SymbolEqualityComparer.Default);
   }
 
+  private static void AnalyzeOperation(IOperation operation, IDictionary<ISymbol, ResultState> state,
+    OperationBlockAnalysisContext context)
+  {
+    Console.WriteLine($"   analyze {operation.Kind}: {operation.Syntax}");
+    // TODO: this should not need to be a field, parameter or local for the unknown state, only for error or success
+    if (operation.IsImplicitResultToValueConversion(out var symbol))
+    {
+      var conversion = (IConversionOperation)operation;
+      var location = conversion.Operand.Syntax.GetLocation();
+      if (state.TryGetValue(symbol, out var resultState))
+      {
+        if (resultState is ResultState.Error)
+        {
+          context.ReportDiagnostic(Diagnostic.Create(ImplicitConversionOfError, location));
+          return;
+        }
+      }
+      else
+      {
+        context.ReportDiagnostic(Diagnostic.Create(ImplicitConversionOfUnknown, location));
+        state.Add(symbol, ResultState.Success);
+        return;
+      }
+    }
+
+    foreach (var descendant in operation.Descendants())
+      AnalyzeOperation(descendant, state, context);
+  }
+
   private class SymbolResultStatePairEqualityComparer : EqualityComparer<KeyValuePair<ISymbol, ResultState>>
   {
     public new static SymbolResultStatePairEqualityComparer Default { get; } = new();
@@ -178,119 +170,4 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
     public override int GetHashCode(KeyValuePair<ISymbol, ResultState> obj) =>
       new { symbolHash = SymbolEqualityComparer.Default.GetHashCode(obj.Key), obj.Value }.GetHashCode();
   }
-
-  private void CheckOperation(OperationBlockAnalysisContext context)
-  {
-    var state = new Dictionary<BasicBlock, Dictionary<string, bool?>>();
-
-    for (var i = 0; i < context.OperationBlocks.Length; i++)
-    {
-      var operationBlock = context.OperationBlocks[i];
-      var graph = context.GetControlFlowGraph(operationBlock);
-
-      foreach (var basicBlock in graph.Blocks.Where(basicBlock =>
-                 basicBlock.ConditionKind is not ControlFlowConditionKind.None))
-      {
-        if (!basicBlock.BranchValue.IsResultTypeInvocation(out var invocation))
-          continue;
-        if (invocation.Instance is IFieldReferenceOperation { Field: { } field })
-        {
-          context.ReportDiagnostic(Diagnostic.Create(GetDiagnostic(
-              $"{basicBlock.BranchValue?.Syntax}: field {field.Name}"),
-            basicBlock.BranchValue?.Syntax.GetLocation()));
-        }
-
-        if (invocation.Instance is ILocalReferenceOperation { Local: { } local })
-        {
-          context.ReportDiagnostic(Diagnostic.Create(GetDiagnostic(
-              $"{basicBlock.BranchValue?.Syntax}: local variable {local.Name}"),
-            basicBlock.BranchValue?.Syntax.GetLocation()));
-        }
-      }
-
-      return;
-
-      var blocks = new Stack<BasicBlock>(graph.Blocks);
-      // blocks.Push(graph.Blocks.First());
-
-      while (blocks.Count > 0)
-      {
-        var basicBlock = blocks.Pop();
-
-        context.ReportDiagnostic(Diagnostic.Create(GetDiagnostic(
-            $"block predecessors: {basicBlock.Predecessors.Length}"),
-          basicBlock.Operations.FirstOrDefault()?.Syntax.GetLocation()));
-        continue;
-        if (basicBlock.ConditionKind is ControlFlowConditionKind.None)
-          continue;
-        context.ReportDiagnostic(Diagnostic.Create(GetDiagnostic(
-            $"block {basicBlock.Ordinal}: {basicBlock.ConditionKind}; {basicBlock.BranchValue?.Syntax}"),
-          basicBlock.BranchValue?.Syntax.GetLocation()));
-        if (basicBlock.ConditionalSuccessor is { Destination: { } successor })
-          blocks.Push(successor);
-        if (basicBlock.FallThroughSuccessor is { Destination: { } fallthrough })
-          blocks.Push(fallthrough);
-      }
-    }
-  }
-
-  public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
-    ImmutableArray.Create(Rule);
-
-
-  private void MarkImplicitConversion(OperationAnalysisContext context)
-  {
-    var conversion = (IConversionOperation)context.Operation;
-    var operand = conversion.Operand.Type as INamedTypeSymbol;
-
-    if (!operand.IsResultType())
-      return;
-
-    if (operand.TypeParameters.Length != 2 ||
-        operand.TypeParameters[0].Name != "TValue" ||
-        !operand.TypeArguments[0].Equals(conversion.Type, SymbolEqualityComparer.Default))
-      return;
-
-    context.ReportDiagnostic(Diagnostic.Create(
-      DiagnosticsHelper.Found(ResultSymbol.ImplicitConversion),
-      conversion.Syntax.GetLocation()));
-  }
-
-  private void MarkInvocations(OperationAnalysisContext context)
-  {
-    if (!context.IsResultTypeInvocation(out var invocation))
-      return;
-
-    ResultSymbol? symbol = invocation.TargetMethod.Name switch
-    {
-      "OrThrow" => ResultSymbol.OrThrow,
-      "OrDefault" => ResultSymbol.OrDefault,
-      "Or" => ResultSymbol.Or,
-      "IsError" when invocation.TargetMethod.Parameters.Length == 1 => ResultSymbol.IsErrorOutValue,
-      "IsError" => ResultSymbol.IsError,
-      _ => null,
-    };
-
-    if (symbol is not null)
-    {
-      context.ReportDiagnostic(Diagnostic.Create(
-        DiagnosticsHelper.Found(symbol.Value),
-        invocation.Syntax.GetLocation()));
-    }
-  }
-
-  private void MarkProperties(OperationAnalysisContext context)
-  {
-    if (!context.IsResultTypePropertyReference(out var invocation))
-      return;
-
-    if (invocation.Property.Name != "OrDefault")
-      return;
-
-    context.ReportDiagnostic(Diagnostic.Create(
-      DiagnosticsHelper.Found(ResultSymbol.OrDefault),
-      invocation.Syntax.GetLocation()));
-  }
 }
-
-internal class ResultAnalysisData { }

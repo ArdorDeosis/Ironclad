@@ -1,66 +1,78 @@
 ﻿using System.Collections;
-using System.Collections.Immutable;
 
 namespace Ironclad.Collections;
 
 // TODO: add equality comparers
 public sealed class MultiValueDictionary<TKey, TValue> where TKey : notnull
 {
-	private readonly Dictionary<TKey, HashSet<TValue>> dictionary = new();
+  private readonly Dictionary<TKey, HashSet<TValue>> dictionary = new();
 
-	public IReadOnlyCollection<TValue> this[TKey key] => dictionary.TryGetValue(key, out var set)
-		? set
-		: Array.Empty<TValue>();
+  public ValueSet this[TKey key] => new(this, key);
 
-	public bool Add(TKey key, TValue value)
-	{
-		if (!dictionary.ContainsKey(key))
-			dictionary.Add(key, new HashSet<TValue>());
-		return dictionary[key].Add(value);
-	}
+  public bool Add(TKey key, TValue value)
+  {
+    dictionary.Keys
+    if (!dictionary.ContainsKey(key))
+      dictionary.Add(key, new HashSet<TValue>());
+    return dictionary[key].Add(value);
+  }
+  
+  public bool Remove (TKey key)
+  {
+    if (dictionary.TryGetValue(key, out var set))
+      set.Clear();
+    return dictionary.Remove(key);
+  }
 
-	public void Clear() => dictionary.Clear();
+  public void Clear() => dictionary.Clear();
 
-	public sealed class ValueSet<TKey, TValue> : IReadOnlyCollection<TValue> where TKey : notnull
-	{
-		private readonly MultiValueDictionary<TKey, TValue> parent;
-		private readonly TKey key;
+  public readonly struct EmptyValueSet : IReadOnlyCollection<TValue>
+  {
+    public EmptyValueSet()
+    { }
 
-		internal ValueSet(MultiValueDictionary<TKey, TValue> parent, TKey key)
-		{
-			this.parent = parent;
-			this.key = key;
-		}
+    public IEnumerator<TValue> GetEnumerator() => new EmptyEnumerator<TValue>();
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-		public IEnumerator<TValue> GetEnumerator() => parent.dictionary.ContainsKey(key)
-			? parent[key].GetEnumerator()
-			: new EmptyEnumerator<TValue>();
+    public int Count => 0;
+  }
+  
+  public readonly struct ValueSet : IReadOnlyCollection<TValue>
+  {
+    private readonly MultiValueDictionary<TKey, TValue> parent;
+    private readonly TKey key;
 
-		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    internal ValueSet(MultiValueDictionary<TKey, TValue> parent, TKey key)
+    {
+      this.parent = parent;
+      this.key = key;
+    }
 
-		public bool Add(TValue item) => set.Add(item);
+    public IEnumerator<TValue> GetEnumerator() =>
+      parent.dictionary.ContainsKey(key)
+        ? parent[key].GetEnumerator()
+        : new EmptyEnumerator<TValue>();
 
-		public void Clear()
-		{
-			throw new NotImplementedException();
-		}
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-		public bool Contains(T item)
-		{
-			throw new NotImplementedException();
-		}
+    public bool Add(TValue item)
+    {
+      if (!parent.dictionary.ContainsKey(key))
+        parent.dictionary.Add(key, new HashSet<TValue>());
+      return parent.dictionary[key].Add(item);
+    }
 
-		public void CopyTo(T[] array, int arrayIndex)
-		{
-			throw new NotImplementedException();
-		}
+    public void Clear() => parent.Remove(key);
 
-		public bool Remove(T item)
-		{
-			throw new NotImplementedException();
-		}
+    public bool Contains(TValue item) => parent.dictionary.TryGetValue(key, out var set) && set.Contains(item);
 
-		public int Count { get; }
-		public bool IsReadOnly { get; }
-	}
+    public bool Remove(TValue item) => parent.dictionary.TryGetValue(key, out var set) && set.Remove(item);
+
+    public int Count => parent.dictionary.TryGetValue(key, out var set) ? set.Count : 0;
+  }
+}
+
+public readonly struct KeySetPair<TKey, TValue>
+{
+  
 }

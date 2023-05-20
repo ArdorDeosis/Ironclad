@@ -49,10 +49,7 @@ public class UndirectedMultiRelationshipManager<T> where T : class
 
 		public void Clear()
 		{
-			foreach (var VARIABLE in manager.connections.ContainsKey(self))
-			{
-				throw new NotImplementedException();
-			}
+			throw new NotImplementedException();
 		}
 
 		public bool Contains(T item) => manager.connections.ContainsKey(item);

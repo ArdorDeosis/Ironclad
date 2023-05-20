@@ -19,6 +19,11 @@ public class Playground
   {
     // should be of type int
     var value1 = valueResult.OrThrow(new Exception());
+
+    if (value1 > 3)
+    {
+      
+    }
     
     // should be of type int?
     var value2 = nullableValueResult.OrThrow(new Exception());

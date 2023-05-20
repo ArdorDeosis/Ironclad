@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -15,6 +16,42 @@ internal readonly struct ResultTypeSymbol
 
 internal static class ExtensionMethods
 {
+  // TODO:
+  internal static bool HasFixedResultState(this IOperation operation, out ResultState resultState)
+  {
+    resultState = default;
+    return false;
+  }
+
+  internal static bool IsTrackableSymbol(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
+  {
+    symbol = operation switch
+    {
+      ILocalReferenceOperation { Local: { } local } => local,
+      IParameterReferenceOperation { Parameter: { } parameter } => parameter,
+      IFieldReferenceOperation { Field: { } field } => field,
+      _ => null,
+    };
+    return symbol is not null;
+  }
+
+  internal static ResultState GetResultState(this IOperation operation, IDictionary<ISymbol, ResultState>? state = null)
+  {
+    // TODO: add 'fixed' states, e.g. Result.Success() or implicit conversion
+    
+    ISymbol? lookupSymbol = operation switch
+    {
+      ILocalReferenceOperation { Local: { } local } => local,
+      IParameterReferenceOperation { Parameter: { } parameter } => parameter,
+      IFieldReferenceOperation { Field: { } field } => field,
+      _ => null,
+    };
+
+    return lookupSymbol is not null && state is not null && state.TryGetValue(lookupSymbol, out var resultState)
+      ? resultState
+      : ResultState.Unknown;
+  }
+  
   internal static bool IsResultType([NotNullWhen(true)] this ITypeSymbol? symbol, out ResultTypeSymbol resultTypeSymbol)
   {
 
@@ -97,7 +134,7 @@ internal static class ExtensionMethods
     out ResultState state)
   {
     // implicit conversion to value
-    if (operation.IsImplicitResultToValueConversion(out _) &&
+    if (operation.IsResultToValueConversionFromLocalOrFieldOrParameter(out _) &&
         operation.IsConversionFromLocalOrFieldOrParameter(out symbol))
     {
       state = ResultState.Success;
@@ -172,12 +209,31 @@ internal static class ExtensionMethods
     }
 
 
-    state = ResultState.Ambivalent;
+    state = ResultState.Unknown;
     symbol = null;
     return false;
   }
+  
+  
 
-  internal static bool IsImplicitResultToValueConversion(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
+  internal static bool IsSymbolReference(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
+  {
+    symbol = operation switch
+    {
+      IFieldReferenceOperation { Field: { } field } => field,
+      ILocalReferenceOperation { Local: { } local } => local,
+      IParameterReferenceOperation { Parameter: { } parameter } => parameter,
+      _=> null,
+    };
+    return symbol is not null;
+  }
+
+  internal static bool IsResultToValueConversion(this IOperation operation) =>
+    operation is IConversionOperation { Operand.Type: INamedTypeSymbol operand } conversion &&
+    operand.IsResultType(out var resultType) && resultType is { ValueType: { } valueType } &&
+    valueType.Equals(conversion.Type, SymbolEqualityComparer.Default);
+
+  internal static bool IsResultToValueConversionFromLocalOrFieldOrParameter(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
   {
     if (operation is IConversionOperation { Operand.Type: INamedTypeSymbol operand } conversion &&
         operand.IsResultType(out var resultType) && resultType is { ValueType: { } valueType } &&

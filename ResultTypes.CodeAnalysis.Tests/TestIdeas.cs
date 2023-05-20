@@ -10,18 +10,24 @@ public class TestIdeas
   // NOTES:
   //
   // ways to determine the state of a result:
-  // - implicit conversion
+  // - conversion
   // - OrThrow()
   // - IsError(), IsError(out TError)
   // - assigning .Success or .Error
   // - assigning via implicit conversion
   //
   // invalid operations in error state:
-  // - implicit conversion in error state
+  // - conversion in error state
   // - using out error value in success state
   // redundant operations in any state:
   // - Or(), OrDefault(), OrThrow()
   // - IsError(), IsError(out TError)
+  
+  [Test]
+  public void Conversion_NoCheck_ShouldWarnAboutMissingCheck()
+  {
+    var value1 = (int)Result<int, string>.Success(6);
+  }
   
   [Test]
   public void ImplicitConversion_NoCheck_ShouldWarnAboutMissingCheck()

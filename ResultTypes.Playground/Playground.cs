@@ -39,6 +39,13 @@ public class Playground
   {
     // should be of type int
     var value1 = valueResult.OrDefault;
+    var value = Result<int, string>.Success(5).IsError();
+
+    var x = new { };
+    if (x is null)
+    {
+      
+    }
     
     // should be of type int?
     var value2 = nullableValueResult.OrDefault;

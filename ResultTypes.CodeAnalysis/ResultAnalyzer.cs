@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -18,33 +16,8 @@ public enum ResultState
 }
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-internal sealed class ResultAnalyzer : DiagnosticAnalyzer
+internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 {
-  public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
-    ImmutableArray.Create(Rule, ConversionOfError, ConversionOfUnknown);
-
-  public static readonly DiagnosticDescriptor Rule = new("IC", "TITLE---", "format", "Naming",
-    DiagnosticSeverity.Warning, isEnabledByDefault: true, description: "description.");
-
-  public static readonly DiagnosticDescriptor ConversionOfError = new("IC001",
-    "conversion of failed Result",
-    "conversion will throw exception, since {0} is a Result.Error", "Ironclad.ResultTypes",
-    DiagnosticSeverity.Error, isEnabledByDefault: true, description: "description");
-
-  public static readonly DiagnosticDescriptor ConversionOfUnknown = new("IC002",
-    "conversion of unknown Result",
-    "conversion of {0} might throw an exception if {0} is an Error", "Ironclad.ResultTypes",
-    DiagnosticSeverity.Warning, isEnabledByDefault: true, description: "description");
-
-  // for test purposes
-  private static readonly DiagnosticDescriptor UnreachableCode = new DiagnosticDescriptor(
-    "UnreachableCode",
-    "Unreachable code",
-    "Unreachable code detected",
-    "CodeQuality",
-    DiagnosticSeverity.Warning,
-    isEnabledByDefault: true);
-
   public override void Initialize(AnalysisContext context)
   {
     context.EnableConcurrentExecution();
@@ -168,14 +141,11 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
   {
     // is this requiring any state?
     RegisterDiagnosticsForNonBranchingOperation(operation, state, context);
+    // is this changing the state?
+    ApplyStateChangesForNonBranchingOperation(operation, state);
+
     foreach (var childOperation in operation.ChildOperations)
       AnalyzeNonBranchingOperation(childOperation, state, context);
-
-    // is this changing the state?
-    // check for 
-    //    assignments => GetStateOfOperation()
-    //    conversion to value (if state converted from named symbol, state is true)
-    //    OrThrow (if on named symbol, state is true)
   }
 
   private static void RegisterDiagnosticsForNonBranchingOperation(IOperation operation,
@@ -199,11 +169,16 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
       switch (GetStateOfOperation(operand, state))
       {
         case ResultState.Unknown:
-          RegisterDiagnostic();
-          context.ReportDiagnostic(Diagnostic.Create(ConversionOfUnknown, operation.Syntax.GetLocation(), operand.Syntax));
+          context.ReportDiagnostic(Diagnostic.Create(
+            ConversionOfUnknown,
+            operation.Syntax.GetLocation(),
+            operand.Syntax));
           break;
         case ResultState.Error:
-          context.ReportDiagnostic(Diagnostic.Create(ConversionOfError, operation.Syntax.GetLocation(), operand.Syntax));
+          context.ReportDiagnostic(Diagnostic.Create(
+            ConversionOfError,
+            operation.Syntax.GetLocation(),
+            operand.Syntax));
           break;
       }
     }
@@ -211,37 +186,56 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
     if (operation is IInvocationOperation { Instance: { Type: { } type } instance } invocation
         && type.IsResultType(out _))
     {
-      switch ((invocation.TargetMethod.Name, GetStateOfOperation(instance, state)))
+      switch (invocation.TargetMethod.Name, GetStateOfOperation(instance, state))
       {
         case ("Or", ResultState.Error):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            FallbackIsAlwaysUsed,
+            operation.Syntax.GetLocation(),
+            invocation.Arguments[0].Syntax,
+            instance.Syntax));
           break;
         case ("Or", ResultState.Success):
-          RegisterDiagnostic();
-          break;
-        case ("OrDefault", ResultState.Error):
-          RegisterDiagnostic();
-          break;
-        case ("OrDefault", ResultState.Success):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            RedundantFallback,
+            operation.Syntax.GetLocation(),
+            invocation.Arguments[0].Syntax));
           break;
         case ("OrThrow", ResultState.Error):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            FallbackAlwaysThrows,
+            operation.Syntax.GetLocation(),
+            instance.Syntax));
           break;
         case ("OrThrow", ResultState.Success):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            RedundantFallback,
+            operation.Syntax.GetLocation(),
+            operation.Syntax));
           break;
         case ("IsError", ResultState.Error):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            ExpressionIsAlwaysTheSame,
+            operation.Syntax.GetLocation(),
+            "true", instance.Syntax, "failure"));
           break;
         case ("IsError", ResultState.Success):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            ExpressionIsAlwaysTheSame,
+            operation.Syntax.GetLocation(),
+            "false", instance.Syntax, "success"));
           break;
         case ("IsSuccess", ResultState.Error):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            ExpressionIsAlwaysTheSame,
+            operation.Syntax.GetLocation(),
+            "false", instance.Syntax, "failure"));
           break;
         case ("IsSuccess", ResultState.Success):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            ExpressionIsAlwaysTheSame,
+            operation.Syntax.GetLocation(),
+            "true", instance.Syntax, "success"));
           break;
       }
     }
@@ -253,17 +247,49 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
       // TODO: this reeks of a table
       switch (propertyReference.Property.Name, GetStateOfOperation(propertyReference.Instance, state))
       {
+        case ("OrDefault", ResultState.Error):
+          context.ReportDiagnostic(Diagnostic.Create(
+            FallbackIsAlwaysUsed,
+            operation.Syntax.GetLocation(),
+            "default value", propertyReference.Instance.Syntax));
+          break;
+        case ("OrDefault", ResultState.Success):
+          context.ReportDiagnostic(Diagnostic.Create(
+            RedundantFallback,
+            operation.Syntax.GetLocation(),
+            propertyReference.Instance.Syntax));
+          break;
         case ("IsError", ResultState.Error):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            ExpressionIsAlwaysTheSame,
+            operation.Syntax.GetLocation(),
+            "true", 
+            propertyReference.Instance.Syntax, 
+            "failure"));
           break;
         case ("IsError", ResultState.Success):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            ExpressionIsAlwaysTheSame,
+            operation.Syntax.GetLocation(),
+            "false", 
+            propertyReference.Instance.Syntax, 
+            "success"));
           break;
         case ("IsSuccess", ResultState.Error):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            ExpressionIsAlwaysTheSame,
+            operation.Syntax.GetLocation(),
+            "false", 
+            propertyReference.Instance.Syntax, 
+            "failure"));
           break;
         case ("IsSuccess", ResultState.Success):
-          RegisterDiagnostic();
+          context.ReportDiagnostic(Diagnostic.Create(
+            ExpressionIsAlwaysTheSame,
+            operation.Syntax.GetLocation(),
+            "true", 
+            propertyReference.Instance.Syntax, 
+            "success"));
           break;
       }
     }
@@ -272,6 +298,47 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
   private static void RegisterDiagnostic()
   {
     // TODO: replace with actual diagnostics
+  }
+
+  private static void ApplyStateChangesForNonBranchingOperation(IOperation operation,
+    IDictionary<ISymbol, ResultState> state)
+  {
+    // check for 
+    //    assignments => GetStateOfOperation()
+    //    conversion to value (if state converted from named symbol, state is true)
+    //    OrThrow (if on named symbol, state is true)
+
+    if (operation is IAssignmentOperation { Target: { Type: { } targetType } target, Value: { } value }
+        && targetType.IsResultType(out _)
+        && target.IsSymbolReference(out var symbol))
+    {
+      var valueState = GetStateOfOperation(value, state);
+      if (valueState is ResultState.Unknown)
+        state.Remove(symbol);
+      else
+        state[symbol] = valueState;
+    }
+
+    if (operation is IConversionOperation
+        {
+          Operand: { Type: { } typeConvertedFrom } operand,
+          Type: { } typeConvertedTo,
+        }
+        && operand.IsSymbolReference(out var symbol2)
+        && typeConvertedFrom.IsResultType(out var resultTypeSymbol)
+        && typeConvertedTo.Equals(resultTypeSymbol.ValueType, SymbolEqualityComparer.Default))
+    {
+      state[symbol2] = ResultState.Success;
+    }
+
+
+    if (operation is IInvocationOperation { Instance: { Type: { } type } instance } invocation
+        && instance.IsSymbolReference(out var symbol3)
+        && type.IsResultType(out _)
+        && invocation.TargetMethod.Name is "OrThrow")
+    {
+      state[symbol3] = ResultState.Success;
+    }
   }
 
   private static ResultState GetStateOfOperation(IOperation operation, IDictionary<ISymbol, ResultState> state)
@@ -291,11 +358,15 @@ internal sealed class ResultAnalyzer : DiagnosticAnalyzer
         return ResultState.Success;
     }
 
-    if (operation.IsResultTypePropertyReference(out var invocation))
+    if (operation.IsResultTypeInvocation(out var invocationOperation))
     {
-      if (invocation.Property.Name is "Success") return ResultState.Success;
-      if (invocation.Property.Name is "Error") return ResultState.Error;
+      if (invocationOperation.TargetMethod.Name is "Success") return ResultState.Success;
+      if (invocationOperation.TargetMethod.Name is "Error") return ResultState.Error;
     }
+
+    if (operation.IsResultTypePropertyReference(out var propertyReferenceOperation)
+        && propertyReferenceOperation.Property.Name is "Success")
+      return ResultState.Success;
 
     return ResultState.Unknown;
   }

@@ -108,25 +108,25 @@ internal static class ExtensionMethods
     resultType.ValueType is null;
 
   internal static bool IsResultTypeInvocation(this OperationAnalysisContext context,
-    [NotNullWhen(true)] out IInvocationOperation? invocation) =>
-    context.Operation.IsResultTypeInvocation(out invocation);
+    [NotNullWhen(true)] out IInvocationOperation? invocationOperation) =>
+    context.Operation.IsResultTypeInvocation(out invocationOperation);
 
   internal static bool IsResultTypeInvocation(this IOperation? operation,
-    [NotNullWhen(true)] out IInvocationOperation? invocation)
+    [NotNullWhen(true)] out IInvocationOperation? invocationOperation)
   {
-    invocation = operation as IInvocationOperation;
-    return invocation is not null && invocation.TargetMethod.ContainingType.IsResultType(out _);
+    invocationOperation = operation as IInvocationOperation;
+    return invocationOperation is not null && invocationOperation.TargetMethod.ContainingType.IsResultType(out _);
   }
 
   internal static bool IsResultTypePropertyReference(this OperationAnalysisContext context,
-    [NotNullWhen(true)] out IPropertyReferenceOperation? invocation) =>
-    IsResultTypePropertyReference(context.Operation, out invocation);
+    [NotNullWhen(true)] out IPropertyReferenceOperation? propertyReferenceOperation) =>
+    IsResultTypePropertyReference(context.Operation, out propertyReferenceOperation);
 
   internal static bool IsResultTypePropertyReference(this IOperation? operation,
-    [NotNullWhen(true)] out IPropertyReferenceOperation? invocation)
+    [NotNullWhen(true)] out IPropertyReferenceOperation? propertyReferenceOperation)
   {
-    invocation = operation as IPropertyReferenceOperation;
-    return invocation is not null && invocation.Property.ContainingType.IsResultType(out _);
+    propertyReferenceOperation = operation as IPropertyReferenceOperation;
+    return propertyReferenceOperation is not null && propertyReferenceOperation.Property.ContainingType.IsResultType(out _);
   }
 
   internal static bool IsDefiningResultState(this IOperation operation,

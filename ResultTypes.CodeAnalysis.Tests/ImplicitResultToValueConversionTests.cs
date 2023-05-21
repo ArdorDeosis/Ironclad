@@ -8,14 +8,18 @@ internal sealed class ImplicitResultToValueConversionTests
   public async Task SimpleAnalyzerTest()
   {
     const string testCode = @"
+using System;
 using Ironclad.ResultTypes;
 
 class TestClass
 {
     private readonly Result<int, string> resultField;
-    void TestMethod(Result<int, string> resultParameter)
+
+    private Result<int, string> MethodReturningResult() => throw new NotImplementedException();
+
+    private void TestMethod(Result<int, string> resultParameter)
     {
-        var resultLocal = Result<int, string>.Success(5);
+        var resultLocal = MethodReturningResult();
 
         int fromField = resultField;
         int fromParameter = resultParameter;
@@ -32,11 +36,14 @@ class TestClass
       ExpectedDiagnostics =
       {
         new DiagnosticResult(ResultAnalyzer.ConversionOfUnknown)
-          .WithLocation(11, 25),
+          .WithLocation(15, 25)
+          .WithArguments("resultField"),
         new DiagnosticResult(ResultAnalyzer.ConversionOfUnknown)
-          .WithLocation(12, 29),
+          .WithLocation(16, 29)
+          .WithArguments("resultParameter"),
         new DiagnosticResult(ResultAnalyzer.ConversionOfUnknown)
-          .WithLocation(13, 25),
+          .WithLocation(17, 25)
+          .WithArguments("resultLocal"),
       },
     };
 

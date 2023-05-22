@@ -35,13 +35,13 @@ class TestClass
       TestCode = testCode, 
       ExpectedDiagnostics =
       {
-        new DiagnosticResult(ResultAnalyzer.ConversionOfUnknown)
+        new DiagnosticResult(ResultAnalyzer.Diagnostics.Conversion.OfUnknown)
           .WithLocation(15, 25)
           .WithArguments("resultField"),
-        new DiagnosticResult(ResultAnalyzer.ConversionOfUnknown)
+        new DiagnosticResult(ResultAnalyzer.Diagnostics.Conversion.OfUnknown)
           .WithLocation(16, 29)
           .WithArguments("resultParameter"),
-        new DiagnosticResult(ResultAnalyzer.ConversionOfUnknown)
+        new DiagnosticResult(ResultAnalyzer.Diagnostics.Conversion.OfUnknown)
           .WithLocation(17, 25)
           .WithArguments("resultLocal"),
       },

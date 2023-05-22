@@ -16,10 +16,90 @@ internal readonly struct ResultTypeSymbol
 
 internal static class ExtensionMethods
 {
+  
+	internal static bool IsOperationOnResultTypeInstance(this IOperation operation,
+		out ResultTypeOperationIdentifier operationDescriptor,
+		[NotNullWhen(true)] out IOperation? instanceOperation)
+	{
+		operationDescriptor = ResultTypeOperationIdentifier.None;
+		instanceOperation = null;
+		return operation.IsConversionOfResultType(out operationDescriptor, out instanceOperation) ||
+		       operation.IsMethodInvocationOnResultType(out operationDescriptor, out instanceOperation) ||
+		       operation.IsPropertyReferenceOnResultType(out operationDescriptor, out instanceOperation);
+	}
+
+	internal static bool IsConversionOfResultType(this IOperation operation,
+		out ResultTypeOperationIdentifier operationDescriptor,
+		[NotNullWhen(true)] out IOperation? instanceOperation)
+	{
+		if (operation is IConversionOperation
+		    {
+			    Operand: { Type: { } typeConvertedFrom } operand,
+			    Type: { } typeConvertedTo,
+		    }
+		    && typeConvertedFrom.IsResultType(out var resultTypeSymbol)
+		    && typeConvertedTo.Equals(resultTypeSymbol.ValueType, SymbolEqualityComparer.Default))
+		{
+			operationDescriptor = ResultTypeOperationIdentifier.Conversion;
+			instanceOperation = operand;
+			return true;
+		}
+
+		operationDescriptor = ResultTypeOperationIdentifier.None;
+		instanceOperation = null;
+		return false;
+	}
+
+	internal static bool IsMethodInvocationOnResultType(this IOperation operation,
+		out ResultTypeOperationIdentifier operationDescriptor,
+		[NotNullWhen(true)] out IOperation? instanceOperation)
+	{
+		if (operation is IInvocationOperation
+		    {
+			    Instance:
+			    {
+				    Type: { } type,
+			    } instance,
+			    TargetMethod.Name: { } methodName,
+		    } && type.IsResultType(out _))
+		{
+			operationDescriptor = methodName.ToResultTypeOperationIdentifier();
+			instanceOperation = instance;
+			return true;
+		}
+
+		operationDescriptor = ResultTypeOperationIdentifier.None;
+		instanceOperation = null;
+		return false;
+	}
+
+	internal static bool IsPropertyReferenceOnResultType(this IOperation operation,
+		out ResultTypeOperationIdentifier operationDescriptor,
+		[NotNullWhen(true)] out IOperation? instanceOperation)
+	{
+		if (operation is IPropertyReferenceOperation
+		    {
+			    Instance:
+			    {
+				    Type: { } instanceType,
+			    } instance,
+			    Property.Name: { } propertyName,
+		    } && instanceType.IsResultType(out _))
+		{
+			operationDescriptor = propertyName.ToResultTypeOperationIdentifier();
+			instanceOperation = instance;
+			return true;
+		}
+
+		operationDescriptor = ResultTypeOperationIdentifier.None;
+		instanceOperation = null;
+		return false;
+	}
+  
   // TODO:
-  internal static bool HasFixedResultState(this IOperation operation, out ResultState resultState)
+  internal static bool HasFixedResultState(this IOperation operation, out ResultTypeInstanceState resultTypeInstanceState)
   {
-    resultState = default;
+    resultTypeInstanceState = default;
     return false;
   }
 
@@ -35,7 +115,7 @@ internal static class ExtensionMethods
     return symbol is not null;
   }
 
-  internal static ResultState GetResultState(this IOperation operation, IDictionary<ISymbol, ResultState>? state = null)
+  internal static ResultTypeInstanceState GetResultState(this IOperation operation, IDictionary<ISymbol, ResultTypeInstanceState>? state = null)
   {
     // TODO: add 'fixed' states, e.g. Result.Success() or implicit conversion
     
@@ -49,7 +129,7 @@ internal static class ExtensionMethods
 
     return lookupSymbol is not null && state is not null && state.TryGetValue(lookupSymbol, out var resultState)
       ? resultState
-      : ResultState.Unknown;
+      : ResultTypeInstanceState.Unknown;
   }
   
   internal static bool IsResultType([NotNullWhen(true)] this ITypeSymbol? symbol, out ResultTypeSymbol resultTypeSymbol)
@@ -131,13 +211,13 @@ internal static class ExtensionMethods
 
   internal static bool IsDefiningResultState(this IOperation operation,
     [NotNullWhen(true)] out ISymbol? symbol,
-    out ResultState state)
+    out ResultTypeInstanceState state)
   {
     // implicit conversion to value
     if (operation.IsResultToValueConversionFromLocalOrFieldOrParameter(out _) &&
         operation.IsConversionFromLocalOrFieldOrParameter(out symbol))
     {
-      state = ResultState.Success;
+      state = ResultTypeInstanceState.Success;
       return true;
     }
 
@@ -150,10 +230,10 @@ internal static class ExtensionMethods
       switch (invocation.TargetMethod.Name)
       {
         case "OrThrow":
-          state = ResultState.Success;
+          state = ResultTypeInstanceState.Success;
           return true;
         case "IsError":
-          state = ResultState.Error;
+          state = ResultTypeInstanceState.Failure;
           return true;
       }
     }
@@ -171,10 +251,10 @@ internal static class ExtensionMethods
         switch (valueInvocation.TargetMethod.Name)
         {
           case "Success":
-            state = ResultState.Success;
+            state = ResultTypeInstanceState.Success;
             return true;
           case "Error":
-            state = ResultState.Error;
+            state = ResultTypeInstanceState.Failure;
             return true;
         }
       }
@@ -183,7 +263,7 @@ internal static class ExtensionMethods
       if (assignment.Value.IsResultTypePropertyReference(out var propertyReference) &&
           propertyReference.Property.Name == "Success")
       {
-        state = ResultState.Success;
+        state = ResultTypeInstanceState.Success;
         return true;
       }
 
@@ -196,20 +276,20 @@ internal static class ExtensionMethods
         // implicitly convert success
         if (fromType.Equals(resultType.ValueType, SymbolEqualityComparer.Default))
         {
-          state = ResultState.Success;
+          state = ResultTypeInstanceState.Success;
           return true;
         }
         // implicitly convert error
         if (fromType.Equals(resultType.ErrorType, SymbolEqualityComparer.Default))
         {
-          state = ResultState.Error;
+          state = ResultTypeInstanceState.Failure;
           return true;
         }
       }
     }
 
 
-    state = ResultState.Unknown;
+    state = ResultTypeInstanceState.Unknown;
     symbol = null;
     return false;
   }

@@ -201,7 +201,7 @@ internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 				return ResultTypeInstanceState.Success;
 		}
 
-		if (operation.IsStaticOperationOnResultType(out var operationIdentifier))
+		if (operation.IsOperationOnResultType(out var operationIdentifier))
 		{
 			switch (operationIdentifier)
 			{

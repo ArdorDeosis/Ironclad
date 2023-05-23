@@ -10,10 +10,10 @@ public class Playground
   private readonly int? nullableValue = default!;
   private readonly DummyData? nullableReference = default!;
   
-  private readonly Result<int, string> valueResult = null!;
-  private readonly Result<int?, string> nullableValueResult = null!;
-  private readonly Result<DummyData, string> referenceResult = null!;
-  private readonly Result<DummyData?, string> nullableReferenceResult = null!;
+  private readonly Result<int, string> valueResult = default!;
+  private readonly Result<int?, string> nullableValueResult = default!;
+  private readonly Result<DummyData, string> referenceResult = default!;
+  private readonly Result<DummyData?, string> nullableReferenceResult = default!;
   
   public void OrThrow_ValueNullabilityIsCorrect()
   {

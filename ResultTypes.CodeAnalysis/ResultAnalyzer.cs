@@ -28,7 +28,8 @@ internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 			Console.WriteLine("### NEW OPERATION BLOCK ###");
 			var graph = context.GetControlFlowGraph(operationBlock);
 			var transitionedStates =
-				new Dictionary<BasicBlock /* to */, Dictionary<BasicBlock /* from */, Dictionary<ISymbol, ResultTypeInstanceState>>>();
+				new Dictionary<BasicBlock /* to */
+					, Dictionary<BasicBlock /* from */, Dictionary<ISymbol, ResultTypeInstanceState>>>();
 			var blocksToBeAnalyzed = new List<BasicBlock>(graph.Blocks);
 			Console.WriteLine($"found {blocksToBeAnalyzed.Count} blocks to analyze");
 
@@ -47,7 +48,7 @@ internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 				PrintState(initialState);
 
 				foreach (var operation in block.Operations)
-					AnalyzeNonBranchingOperation(operation, initialState, context);
+					AnalyzeNonBranchingOperation(operation, ref initialState, context);
 
 				if (block.BranchValue is not null) { }
 
@@ -56,7 +57,8 @@ internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 				if (block is { FallThroughSuccessor.Destination: { } fallthrough })
 				{
 					if (!transitionedStates.ContainsKey(fallthrough))
-						transitionedStates.Add(fallthrough, new Dictionary<BasicBlock, Dictionary<ISymbol, ResultTypeInstanceState>>());
+						transitionedStates.Add(fallthrough,
+							new Dictionary<BasicBlock, Dictionary<ISymbol, ResultTypeInstanceState>>());
 					transitionedStates[fallthrough].Add(block,
 						new Dictionary<ISymbol, ResultTypeInstanceState>(initialState, SymbolEqualityComparer.Default));
 				}
@@ -64,7 +66,8 @@ internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 				if (block is { ConditionalSuccessor.Destination: { } conditional })
 				{
 					if (!transitionedStates.ContainsKey(conditional))
-						transitionedStates.Add(conditional, new Dictionary<BasicBlock, Dictionary<ISymbol, ResultTypeInstanceState>>());
+						transitionedStates.Add(conditional,
+							new Dictionary<BasicBlock, Dictionary<ISymbol, ResultTypeInstanceState>>());
 					if (!transitionedStates[conditional].ContainsKey(block)) // TODO: why is this necessary?
 						transitionedStates[conditional].Add(block,
 							new Dictionary<ISymbol, ResultTypeInstanceState>(initialState, SymbolEqualityComparer.Default));
@@ -74,7 +77,8 @@ internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 
 		// checks whether all predecessor states are 
 		bool AllPredecessorStatesAreCalculated(BasicBlock block,
-			Dictionary<BasicBlock, Dictionary<BasicBlock, Dictionary<ISymbol, ResultTypeInstanceState>>> transitionedStates) =>
+			Dictionary<BasicBlock, Dictionary<BasicBlock, Dictionary<ISymbol, ResultTypeInstanceState>>>
+				transitionedStates) =>
 			block.Predecessors.Length == 0
 			|| transitionedStates.TryGetValue(block, out var incomingStates)
 			&& block
@@ -82,7 +86,8 @@ internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 				.Select(branch => branch.Source)
 				.All(predecessorBlock => incomingStates.ContainsKey(predecessorBlock));
 
-		Dictionary<ISymbol, ResultTypeInstanceState> CombineStates(IEnumerable<Dictionary<ISymbol, ResultTypeInstanceState>> states) =>
+		Dictionary<ISymbol, ResultTypeInstanceState> CombineStates(
+			IEnumerable<Dictionary<ISymbol, ResultTypeInstanceState>> states) =>
 			!states.Any()
 				? new Dictionary<ISymbol, ResultTypeInstanceState>(SymbolEqualityComparer.Default)
 				: states
@@ -108,21 +113,19 @@ internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 		}
 	}
 
-	private static void AnalyzeNonBranchingOperation(IOperation operation, IDictionary<ISymbol, ResultTypeInstanceState> state,
+	private static void AnalyzeNonBranchingOperation(IOperation operation,
+		ref Dictionary<ISymbol, ResultTypeInstanceState> state,
 		OperationBlockAnalysisContext context)
 	{
-		// is this requiring any state?
 		RegisterDiagnosticsForNonBranchingOperation(operation, state, context);
-		// is this changing the state?
-		ApplyStateChangesForNonBranchingOperation(operation, state);
-
+		ApplyStateChangesForNonBranchingOperation(operation, ref state);
 		foreach (var childOperation in operation.ChildOperations)
-			AnalyzeNonBranchingOperation(childOperation, state, context);
+			AnalyzeNonBranchingOperation(childOperation, ref state, context);
 	}
 
 	private static void RegisterDiagnosticsForNonBranchingOperation(
 		IOperation operation,
-		IDictionary<ISymbol, ResultTypeInstanceState> state,
+		IReadOnlyDictionary<ISymbol, ResultTypeInstanceState> state,
 		OperationBlockAnalysisContext context)
 	{
 		if (operation.IsOperationOnResultTypeInstance(out var operationDescriptor, out var instanceOperation)
@@ -139,47 +142,49 @@ internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 	}
 
 	private static void ApplyStateChangesForNonBranchingOperation(IOperation operation,
-		IDictionary<ISymbol, ResultTypeInstanceState> state)
+		ref Dictionary<ISymbol, ResultTypeInstanceState> state)
 	{
-		// check for 
-		//    assignments => GetStateOfOperation()
-		//    conversion to value (if state converted from named symbol, state is true)
-		//    OrThrow (if on named symbol, state is true)
-
-		if (operation is IAssignmentOperation { Target: { Type: { } targetType } target, Value: { } value }
-		    && targetType.IsResultType(out _)
-		    && target.IsSymbolReference(out var symbol))
-		{
-			var valueState = GetStateOfOperation(value, state);
-			if (valueState is ResultTypeInstanceState.Unknown)
-				state.Remove(symbol);
-			else
-				state[symbol] = valueState;
-		}
-
-		if (operation is IConversionOperation
-		    {
-			    Operand: { Type: { } typeConvertedFrom } operand,
-			    Type: { } typeConvertedTo,
-		    }
-		    && operand.IsSymbolReference(out var symbol2)
-		    && typeConvertedFrom.IsResultType(out var resultTypeSymbol)
-		    && typeConvertedTo.Equals(resultTypeSymbol.ValueType, SymbolEqualityComparer.Default))
-		{
-			state[symbol2] = ResultTypeInstanceState.Success;
-		}
-
-
-		if (operation is IInvocationOperation { Instance: { Type: { } type } instance } invocation
-		    && instance.IsSymbolReference(out var symbol3)
-		    && type.IsResultType(out _)
-		    && invocation.TargetMethod.Name is "OrThrow")
-		{
-			state[symbol3] = ResultTypeInstanceState.Success;
-		}
+		if (!IsChangingReferenceSymbolState(operation, state, out var symbol, out var newState))
+			return;
+		if (newState is ResultTypeInstanceState.Unknown)
+			state.Remove(symbol);
+		else
+			state[symbol] = newState;
 	}
 
-	private static ResultTypeInstanceState GetStateOfOperation(IOperation operation, IDictionary<ISymbol, ResultTypeInstanceState> state)
+	private static bool IsChangingReferenceSymbolState(IOperation operation,
+		IReadOnlyDictionary<ISymbol, ResultTypeInstanceState> state,
+		[NotNullWhen(true)] out ISymbol? symbolOperation,
+		out ResultTypeInstanceState symbolState)
+	{
+		if (operation.IsAssignmentToResultTypeReferenceSymbol(out symbolOperation, out var valueOperation))
+		{
+			symbolState = GetStateOfOperation(valueOperation, state);
+			return true;
+		}
+
+		if (operation.IsConversionOfResultTypeReferenceSymbolToValueType(out symbolOperation))
+		{
+			symbolState = ResultTypeInstanceState.Success;
+			return true;
+		}
+
+		if (operation.IsOperationOnResultTypeInstance(out var operationIdentifier, out var instanceOperation)
+		    && instanceOperation.IsSymbolReference(out symbolOperation)
+		    && operationIdentifier is ResultTypeOperationIdentifier.OrThrow)
+		{
+			symbolState = ResultTypeInstanceState.Success;
+			return true;
+		}
+
+		symbolOperation = null;
+		symbolState = default;
+		return false;
+	}
+
+	// TODO: lookup table
+	private static ResultTypeInstanceState GetStateOfOperation(IOperation operation,
+		IReadOnlyDictionary<ISymbol, ResultTypeInstanceState> state)
 	{
 		if (operation.IsSymbolReference(out var symbol) && state.TryGetValue(symbol, out var value))
 			return value;
@@ -196,16 +201,17 @@ internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 				return ResultTypeInstanceState.Success;
 		}
 
-		if (operation.IsResultTypeInvocation(out var invocationOperation))
+		if (operation.IsStaticOperationOnResultType(out var operationIdentifier))
 		{
-			if (invocationOperation.TargetMethod.Name is "Success") return ResultTypeInstanceState.Success;
-			if (invocationOperation.TargetMethod.Name is "Error") return ResultTypeInstanceState.Failure;
+			switch (operationIdentifier)
+			{
+				case ResultTypeOperationIdentifier.SuccessConstructor:
+					return ResultTypeInstanceState.Success;
+				case ResultTypeOperationIdentifier.ErrorConstructor:
+					return ResultTypeInstanceState.Failure;
+			}
 		}
-
-		if (operation.IsResultTypePropertyReference(out var propertyReferenceOperation)
-		    && propertyReferenceOperation.Property.Name is "Success")
-			return ResultTypeInstanceState.Success;
-
+		
 		return ResultTypeInstanceState.Unknown;
 	}
 
@@ -213,7 +219,8 @@ internal sealed partial class ResultAnalyzer : DiagnosticAnalyzer
 	{
 		public new static SymbolResultStatePairEqualityComparer Default { get; } = new();
 
-		public override bool Equals(KeyValuePair<ISymbol, ResultTypeInstanceState> x, KeyValuePair<ISymbol, ResultTypeInstanceState> y) =>
+		public override bool Equals(KeyValuePair<ISymbol, ResultTypeInstanceState> x,
+			KeyValuePair<ISymbol, ResultTypeInstanceState> y) =>
 			x.Key.Equals(y.Key, SymbolEqualityComparer.Default) && x.Value.Equals(y.Value);
 
 		public override int GetHashCode(KeyValuePair<ISymbol, ResultTypeInstanceState> obj) =>

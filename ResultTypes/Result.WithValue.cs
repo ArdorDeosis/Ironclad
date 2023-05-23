@@ -10,7 +10,7 @@ namespace Ironclad.ResultTypes;
 /// <typeparam name="TValue">The type of the value in case of success.</typeparam>
 /// <typeparam name="TError">The type of the value in case of failure.</typeparam>
 [PublicAPI]
-public class Result<TValue, TError>
+public readonly struct Result<TValue, TError>
 {
   private readonly bool success;
   private readonly TValue value;

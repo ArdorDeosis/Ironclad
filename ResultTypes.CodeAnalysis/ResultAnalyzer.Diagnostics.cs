@@ -15,8 +15,8 @@ internal sealed partial class ResultAnalyzer
 		DiagnosticMap =
 			new Dictionary<(ResultTypeOperationIdentifier operationDescriptor, ResultTypeInstanceState instanceState), DiagnosticDescriptor>
 			{
-				{ (ResultTypeOperationIdentifier.Conversion, ResultTypeInstanceState.Unknown), Diagnostics.Conversion.OfUnknown },
-				{ (ResultTypeOperationIdentifier.Conversion, ResultTypeInstanceState.Failure), Diagnostics.Conversion.OfError },
+				{ (ResultTypeOperationIdentifier.ConversionToSuccessValue, ResultTypeInstanceState.Unknown), Diagnostics.Conversion.OfUnknown },
+				{ (ResultTypeOperationIdentifier.ConversionToSuccessValue, ResultTypeInstanceState.Failure), Diagnostics.Conversion.OfError },
 				{ (ResultTypeOperationIdentifier.OrFallback, ResultTypeInstanceState.Success), Diagnostics.Fallback.OnSuccess },
 				{ (ResultTypeOperationIdentifier.OrFallback, ResultTypeInstanceState.Failure), Diagnostics.Fallback.OnFailure },
 				{ (ResultTypeOperationIdentifier.OrThrow, ResultTypeInstanceState.Success), Diagnostics.Fallback.OnSuccess },

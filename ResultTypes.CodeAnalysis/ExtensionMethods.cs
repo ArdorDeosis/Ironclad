@@ -1,35 +1,32 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
 namespace ResultTypes.CodeAnalysis;
 
-internal readonly struct ResultTypeSymbol
-{
-  internal required INamedTypeSymbol? ValueType { get; init; }
-  internal required INamedTypeSymbol ErrorType { get; init; }
-  internal required INamedTypeSymbol Source { get; init; }
-}
-
 internal static class ExtensionMethods
 {
-  
+	internal static bool IsStaticOperationOnResultType(this IOperation operation,
+		out ResultTypeOperationIdentifier operationIdentifier)
+	{
+		operationIdentifier = ResultTypeOperationIdentifier.None;
+		return operation.IsMethodInvocationOnResultType(out operationIdentifier, out _) ||
+		       operation.IsPropertyReferenceOnResultType(out operationIdentifier, out _);
+	}
+
 	internal static bool IsOperationOnResultTypeInstance(this IOperation operation,
-		out ResultTypeOperationIdentifier operationDescriptor,
+		out ResultTypeOperationIdentifier operationIdentifier,
 		[NotNullWhen(true)] out IOperation? instanceOperation)
 	{
-		operationDescriptor = ResultTypeOperationIdentifier.None;
+		operationIdentifier = ResultTypeOperationIdentifier.None;
 		instanceOperation = null;
-		return operation.IsConversionOfResultType(out operationDescriptor, out instanceOperation) ||
-		       operation.IsMethodInvocationOnResultType(out operationDescriptor, out instanceOperation) ||
-		       operation.IsPropertyReferenceOnResultType(out operationDescriptor, out instanceOperation);
+		return operation.IsConversionOfResultType(out operationIdentifier, out instanceOperation) ||
+		       operation.IsMethodInvocationOnResultTypeInstance(out operationIdentifier, out instanceOperation) ||
+		       operation.IsPropertyReferenceOnResultTypeInstance(out operationIdentifier, out instanceOperation);
 	}
 
 	internal static bool IsConversionOfResultType(this IOperation operation,
-		out ResultTypeOperationIdentifier operationDescriptor,
+		out ResultTypeOperationIdentifier operationIdentifier,
 		[NotNullWhen(true)] out IOperation? instanceOperation)
 	{
 		if (operation is IConversionOperation
@@ -40,51 +37,63 @@ internal static class ExtensionMethods
 		    && typeConvertedFrom.IsResultType(out var resultTypeSymbol)
 		    && typeConvertedTo.Equals(resultTypeSymbol.ValueType, SymbolEqualityComparer.Default))
 		{
-			operationDescriptor = ResultTypeOperationIdentifier.Conversion;
+			operationIdentifier = ResultTypeOperationIdentifier.ConversionToSuccessValue;
 			instanceOperation = operand;
 			return true;
 		}
 
-		operationDescriptor = ResultTypeOperationIdentifier.None;
+		operationIdentifier = ResultTypeOperationIdentifier.None;
 		instanceOperation = null;
 		return false;
 	}
 
 	internal static bool IsMethodInvocationOnResultType(this IOperation operation,
-		out ResultTypeOperationIdentifier operationDescriptor,
-		[NotNullWhen(true)] out IOperation? instanceOperation)
+		out ResultTypeOperationIdentifier operationIdentifier,
+		out IOperation? instanceOperation)
 	{
 		if (operation is IInvocationOperation
 		    {
-			    Instance:
+			    Instance: var instance,
+			    TargetMethod:
 			    {
-				    Type: { } type,
-			    } instance,
-			    TargetMethod.Name: { } methodName,
+				    Name: { } methodName,
+				    ContainingType: { } type,
+			    },
 		    } && type.IsResultType(out _))
 		{
-			operationDescriptor = methodName.ToResultTypeOperationIdentifier();
+			operationIdentifier = methodName.ToResultTypeOperationIdentifier();
 			instanceOperation = instance;
 			return true;
 		}
 
-		operationDescriptor = ResultTypeOperationIdentifier.None;
+		operationIdentifier = ResultTypeOperationIdentifier.None;
 		instanceOperation = null;
 		return false;
 	}
 
+	internal static bool IsMethodInvocationOnResultTypeInstance(this IOperation operation,
+		out ResultTypeOperationIdentifier operationIdentifier,
+		[NotNullWhen(true)] out IOperation? instanceOperation)
+	{
+		operationIdentifier = ResultTypeOperationIdentifier.None;
+		instanceOperation = null;
+		return operation.IsMethodInvocationOnResultType(out operationIdentifier, out instanceOperation)
+		       && instanceOperation is not null;
+	}
+
 	internal static bool IsPropertyReferenceOnResultType(this IOperation operation,
 		out ResultTypeOperationIdentifier operationDescriptor,
-		[NotNullWhen(true)] out IOperation? instanceOperation)
+		out IOperation? instanceOperation)
 	{
 		if (operation is IPropertyReferenceOperation
 		    {
-			    Instance:
+			    Instance: var instance,
+			    Property:
 			    {
-				    Type: { } instanceType,
-			    } instance,
-			    Property.Name: { } propertyName,
-		    } && instanceType.IsResultType(out _))
+				    Name: { } propertyName,
+				    ContainingType: { } type,
+			    },
+		    } && type.IsResultType(out _))
 		{
 			operationDescriptor = propertyName.ToResultTypeOperationIdentifier();
 			instanceOperation = instance;
@@ -95,281 +104,121 @@ internal static class ExtensionMethods
 		instanceOperation = null;
 		return false;
 	}
-  
-  // TODO:
-  internal static bool HasFixedResultState(this IOperation operation, out ResultTypeInstanceState resultTypeInstanceState)
-  {
-    resultTypeInstanceState = default;
-    return false;
-  }
 
-  internal static bool IsTrackableSymbol(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
-  {
-    symbol = operation switch
-    {
-      ILocalReferenceOperation { Local: { } local } => local,
-      IParameterReferenceOperation { Parameter: { } parameter } => parameter,
-      IFieldReferenceOperation { Field: { } field } => field,
-      _ => null,
-    };
-    return symbol is not null;
-  }
-
-  internal static ResultTypeInstanceState GetResultState(this IOperation operation, IDictionary<ISymbol, ResultTypeInstanceState>? state = null)
-  {
-    // TODO: add 'fixed' states, e.g. Result.Success() or implicit conversion
-    
-    ISymbol? lookupSymbol = operation switch
-    {
-      ILocalReferenceOperation { Local: { } local } => local,
-      IParameterReferenceOperation { Parameter: { } parameter } => parameter,
-      IFieldReferenceOperation { Field: { } field } => field,
-      _ => null,
-    };
-
-    return lookupSymbol is not null && state is not null && state.TryGetValue(lookupSymbol, out var resultState)
-      ? resultState
-      : ResultTypeInstanceState.Unknown;
-  }
-  
-  internal static bool IsResultType([NotNullWhen(true)] this ITypeSymbol? symbol, out ResultTypeSymbol resultTypeSymbol)
-  {
-
-    if (symbol is INamedTypeSymbol
-        {
-          Kind: SymbolKind.NamedType,
-          Name: "Result",
-          ContainingNamespace:
-          {
-            Name: "ResultTypes",
-            ContainingNamespace.Name: "Ironclad",
-          },
-        } resultType)
-    {
-      switch (resultType)
-      {
-        case 
-        {
-          TypeParameters: [{ Name: "TValue" }, { Name: "TError" }],
-          TypeArguments: [INamedTypeSymbol value, INamedTypeSymbol error],
-        }:
-          resultTypeSymbol = new ResultTypeSymbol
-          {
-            ValueType = value,
-            ErrorType = error,
-            Source = resultType,
-          };
-          return true;
-        case
-        {
-          TypeParameters: [{ Name: "TError" }],
-          TypeArguments: [INamedTypeSymbol othererror],
-        }:
-          resultTypeSymbol = new ResultTypeSymbol
-          {
-            ValueType = null,
-            ErrorType = othererror,
-            Source = resultType,
-          };
-          return true;
-      }
-    }
-
-    resultTypeSymbol = default!;
-    return false;
-  }
-
-  internal static bool IsResultTypeWithValue([NotNullWhen(true)] this ITypeSymbol? symbol) =>
-    symbol.IsResultType(out var resultType) &&
-    resultType.ValueType is not null;
-
-  internal static bool IsResultTypeWithoutValue([NotNullWhen(true)] this ITypeSymbol? symbol) =>
-    symbol.IsResultType(out var resultType) &&
-    resultType.ValueType is null;
-
-  internal static bool IsResultTypeInvocation(this OperationAnalysisContext context,
-    [NotNullWhen(true)] out IInvocationOperation? invocationOperation) =>
-    context.Operation.IsResultTypeInvocation(out invocationOperation);
-
-  internal static bool IsResultTypeInvocation(this IOperation? operation,
-    [NotNullWhen(true)] out IInvocationOperation? invocationOperation)
-  {
-    invocationOperation = operation as IInvocationOperation;
-    return invocationOperation is not null && invocationOperation.TargetMethod.ContainingType.IsResultType(out _);
-  }
-
-  internal static bool IsResultTypePropertyReference(this OperationAnalysisContext context,
-    [NotNullWhen(true)] out IPropertyReferenceOperation? propertyReferenceOperation) =>
-    IsResultTypePropertyReference(context.Operation, out propertyReferenceOperation);
-
-  internal static bool IsResultTypePropertyReference(this IOperation? operation,
-    [NotNullWhen(true)] out IPropertyReferenceOperation? propertyReferenceOperation)
-  {
-    propertyReferenceOperation = operation as IPropertyReferenceOperation;
-    return propertyReferenceOperation is not null && propertyReferenceOperation.Property.ContainingType.IsResultType(out _);
-  }
-
-  internal static bool IsDefiningResultState(this IOperation operation,
-    [NotNullWhen(true)] out ISymbol? symbol,
-    out ResultTypeInstanceState state)
-  {
-    // implicit conversion to value
-    if (operation.IsResultToValueConversionFromLocalOrFieldOrParameter(out _) &&
-        operation.IsConversionFromLocalOrFieldOrParameter(out symbol))
-    {
-      state = ResultTypeInstanceState.Success;
-      return true;
-    }
-
-    // OrThrow()
-    // IsError(), IsError(out TError)
-    if (operation.IsResultTypeInvocation(out var invocation) &&
-        invocation.Instance is { } instance &&
-        instance.IsLocalOrField(out symbol))
-    {
-      switch (invocation.TargetMethod.Name)
-      {
-        case "OrThrow":
-          state = ResultTypeInstanceState.Success;
-          return true;
-        case "IsError":
-          state = ResultTypeInstanceState.Failure;
-          return true;
-      }
-    }
+	internal static bool IsPropertyReferenceOnResultTypeInstance(this IOperation operation,
+		out ResultTypeOperationIdentifier operationDescriptor,
+		[NotNullWhen(true)] out IOperation? instanceOperation)
+	{
+		operationDescriptor = ResultTypeOperationIdentifier.None;
+		instanceOperation = null;
+		return operation.IsPropertyReferenceOnResultType(out operationDescriptor, out instanceOperation) &&
+		       instanceOperation is not null;
+	}
 
 
-    // assignments
-    if (operation is IAssignmentOperation assignment &&
-        assignment.Target.Type.IsResultType(out _) &&
-        assignment.Target.IsLocalOrField(out symbol) &&
-        assignment.Value.Type.IsResultType(out var resultType))
-    {
-      // assigning .Success() or .Error()
-      if (assignment.Value.IsResultTypeInvocation(out var valueInvocation))
-      {
-        switch (valueInvocation.TargetMethod.Name)
-        {
-          case "Success":
-            state = ResultTypeInstanceState.Success;
-            return true;
-          case "Error":
-            state = ResultTypeInstanceState.Failure;
-            return true;
-        }
-      }
+	internal static bool IsAssignmentToResultTypeReferenceSymbol(this IOperation operation,
+		[NotNullWhen(true)] out ISymbol? symbol,
+		[NotNullWhen(true)] out IOperation? valueOperation)
+	{
+		if (operation is IAssignmentOperation { Target: { Type: { } targetType } target, Value: { } value }
+		    && targetType.IsResultType(out _)
+		    && target.IsSymbolReference(out symbol))
+		{
+			valueOperation = value;
+			return true;
+		}
 
-      // assigning .Success property
-      if (assignment.Value.IsResultTypePropertyReference(out var propertyReference) &&
-          propertyReference.Property.Name == "Success")
-      {
-        state = ResultTypeInstanceState.Success;
-        return true;
-      }
+		valueOperation = default;
+		symbol = default;
+		return false;
+	}
 
-      // assigning implicit conversion
-      if (assignment.Value is IConversionOperation
-          {
-            Operand.Type: {} fromType,
-          })
-      {
-        // implicitly convert success
-        if (fromType.Equals(resultType.ValueType, SymbolEqualityComparer.Default))
-        {
-          state = ResultTypeInstanceState.Success;
-          return true;
-        }
-        // implicitly convert error
-        if (fromType.Equals(resultType.ErrorType, SymbolEqualityComparer.Default))
-        {
-          state = ResultTypeInstanceState.Failure;
-          return true;
-        }
-      }
-    }
+	internal static bool IsConversionOfResultTypeReferenceSymbolToValueType(this IOperation operation,
+		[NotNullWhen(true)] out ISymbol? symbol)
+	{
+		symbol = null;
+		return operation is IConversionOperation
+		       {
+			       Operand: { Type: { } typeConvertedFrom } operand,
+			       Type: { } typeConvertedTo,
+		       }
+		       && typeConvertedFrom.IsResultType(out var resultTypeSymbol)
+		       && operand.IsSymbolReference(out symbol)
+		       && typeConvertedTo.Equals(resultTypeSymbol.ValueType, SymbolEqualityComparer.Default);
+	}
 
+	internal static bool IsResultType([NotNullWhen(true)] this ITypeSymbol? symbol, out ResultTypeSymbol resultTypeSymbol)
+	{
+		if (symbol is INamedTypeSymbol
+		    {
+			    Kind: SymbolKind.NamedType,
+			    Name: "Result",
+			    ContainingNamespace:
+			    {
+				    Name: "ResultTypes",
+				    ContainingNamespace.Name: "Ironclad",
+			    },
+		    } resultType)
+		{
+			if (resultType is
+			    {
+				    TypeParameters: [{ Name: "TValue" }, { Name: "TError" }],
+				    TypeArguments: [INamedTypeSymbol value, INamedTypeSymbol error],
+			    })
+			{
+				resultTypeSymbol = new ResultTypeSymbol
+				{
+					ValueType = value,
+					ErrorType = error,
+					Source = resultType,
+				};
+				return true;
+			}
 
-    state = ResultTypeInstanceState.Unknown;
-    symbol = null;
-    return false;
-  }
-  
-  
+			if (resultType is
+			    {
+				    TypeParameters: [{ Name: "TError" }],
+				    TypeArguments: [INamedTypeSymbol errorType],
+			    })
+			{
+				resultTypeSymbol = new ResultTypeSymbol
+				{
+					ValueType = null,
+					ErrorType = errorType,
+					Source = resultType,
+				};
+				return true;
+			}
+		}
 
-  internal static bool IsSymbolReference(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
-  {
-    symbol = operation switch
-    {
-      IFieldReferenceOperation { Field: { } field } => field,
-      ILocalReferenceOperation { Local: { } local } => local,
-      IParameterReferenceOperation { Parameter: { } parameter } => parameter,
-      _=> null,
-    };
-    return symbol is not null;
-  }
+		resultTypeSymbol = default!;
+		return false;
+	}
 
-  internal static bool IsResultToValueConversion(this IOperation operation) =>
-    operation is IConversionOperation { Operand.Type: INamedTypeSymbol operand } conversion &&
-    operand.IsResultType(out var resultType) && resultType is { ValueType: { } valueType } &&
-    valueType.Equals(conversion.Type, SymbolEqualityComparer.Default);
+	internal static bool IsResultTypeInvocation(this IOperation? operation,
+		[NotNullWhen(true)] out IInvocationOperation? invocationOperation)
+	{
+		invocationOperation = operation as IInvocationOperation;
+		return invocationOperation is not null && invocationOperation.TargetMethod.ContainingType.IsResultType(out _);
+	}
 
-  internal static bool IsResultToValueConversionFromLocalOrFieldOrParameter(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
-  {
-    if (operation is IConversionOperation { Operand.Type: INamedTypeSymbol operand } conversion &&
-        operand.IsResultType(out var resultType) && resultType is { ValueType: { } valueType } &&
-        valueType.Equals(conversion.Type, SymbolEqualityComparer.Default) && 
-        operation.IsConversionFromLocalOrFieldOrParameter(out var variable))
-    {
-      symbol = variable;
-      return true;
-    }
-    symbol = default;
-    return false;
-  }
+	internal static bool IsResultTypePropertyReference(this IOperation? operation,
+		[NotNullWhen(true)] out IPropertyReferenceOperation? propertyReferenceOperation)
+	{
+		propertyReferenceOperation = operation as IPropertyReferenceOperation;
+		return propertyReferenceOperation is not null &&
+		       propertyReferenceOperation.Property.ContainingType.IsResultType(out _);
+	}
 
-  internal static bool IsImplicitValueToSuccessConversion(this IOperation operation) =>
-    operation is IConversionOperation
-    {
-      Type: INamedTypeSymbol
-      {
-        Name: "Result",
-        ContainingNamespace:
-        {
-          Name: "ResultTypes",
-          ContainingNamespace.Name: "Ironclad",
-        },
-      } resultType,
-      Operand.Type: INamedTypeSymbol operandType,
-    } &&
-    resultType.TypeArguments[0].Equals(operandType, SymbolEqualityComparer.Default);
-
-  internal static bool IsImplicitResultToBoolConversion(this IOperation operation) =>
-    operation is IConversionOperation
-    {
-      Operand.Type: INamedTypeSymbol operand,
-      Type.SpecialType: SpecialType.System_Boolean,
-    } && operand.IsResultTypeWithoutValue();
-
-  internal static bool IsConversionFromLocalOrFieldOrParameter(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
-  {
-    symbol = (operation as IConversionOperation)?.Operand switch
-    {
-      ILocalReferenceOperation { Local: { } local } => local,
-      IFieldReferenceOperation { Field: { } field } => field,
-      IParameterReferenceOperation { Parameter: { } parameter } => parameter,
-      _ => null,
-    };
-    return symbol is not null;
-  }
-
-  internal static bool IsLocalOrField(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
-  {
-    symbol = operation switch
-    {
-      ILocalReferenceOperation { Local: { } local } => local,
-      IFieldReferenceOperation { Field: { } field } => field,
-      _ => null,
-    };
-    return symbol is not null;
-  }
+	internal static bool IsSymbolReference(this IOperation operation, [NotNullWhen(true)] out ISymbol? symbol)
+	{
+		symbol = operation switch
+		{
+			IFieldReferenceOperation { Field: { } field } => field,
+			ILocalReferenceOperation { Local: { } local } => local,
+			IParameterReferenceOperation { Parameter: { } parameter } => parameter,
+			_ => null,
+		};
+		return symbol is not null;
+	}
 }

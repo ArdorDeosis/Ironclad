@@ -9,7 +9,7 @@ namespace Ironclad.ResultTypes;
 /// <typeparam name="TError">The type of the error.</typeparam>
 /// <remarks>Can implicitly be converted to a <see cref="bool"/>, indicating whether the operation succeeded.</remarks>
 [PublicAPI]
-public class Result<TError>
+public readonly struct Result<TError>
 {
   private readonly bool success;
   private readonly TError error;

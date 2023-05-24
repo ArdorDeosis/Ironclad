@@ -7,7 +7,7 @@ namespace ResultTypes.CodeAnalysis;
 /// <summary>
 /// Operation analysis extension methods.
 /// </summary>
-internal static class OperationAnalysis
+internal static class OperationAnalysisExtensions
 {
 	/// <summary>
 	/// Whether the operation is a reference to a named symbol (field, local, parameter).

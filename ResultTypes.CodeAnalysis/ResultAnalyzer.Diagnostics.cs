@@ -47,7 +47,7 @@ internal sealed partial class ResultAnalyzer
 		{
 			internal static readonly DiagnosticDescriptor OfError = new("IC0001",
 				"Conversion of failed Result type",
-				"Conversion always throws an exception, since {0} is a failure.",
+				"Conversion of {0} always throws an exception, since {0} is a failure.",
 				Category,
 				DiagnosticSeverity.Error, 
 				true,

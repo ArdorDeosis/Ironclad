@@ -1,7 +1,6 @@
 ﻿using System.Collections;
-using System.Data;
 
-namespace Playground;
+namespace Ironclad.Relations.Playground;
 
 public class Person
 {
@@ -64,10 +63,22 @@ public class UndirectedMultiRelationshipManager<T> where T : class
 
 		public bool Remove(T item)
 		{
-			throw new NotImplementedException();
+			if (manager.connections.TryGetValue(self, out var connections) &&
+			    manager.connections.TryGetValue(item, out var backConnections))
+				return connections.Remove(item) && backConnections.Remove(self);
+			if (!manager.connections.ContainsKey(self)) 
+				manager.connections.Add(self, new HashSet<T>());
+			if (!manager.connections.ContainsKey(item)) 
+				manager.connections.Add(item, new HashSet<T>());
+			manager.connections[self].Add(item);
+			manager.connections[item].Add(self);
+			return false;
 		}
 
-		public int Count { get; }
-		public bool IsReadOnly { get; }
+		public int Count => manager.connections.TryGetValue(self, out var connections) 
+			? connections.Count 
+			: 0;
+		
+		public bool IsReadOnly => false;
 	}
 }

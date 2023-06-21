@@ -1,4 +1,6 @@
-﻿namespace ResultTypes.CodeAnalysis.Tests;
+﻿using ResultTypes.CodeAnalysis.Tests.TestHelpers;
+
+namespace ResultTypes.CodeAnalysis.Tests;
 
 internal sealed class PlaygroundTesting
 {

@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis.Testing;
+using ResultTypes.CodeAnalysis.Tests.TestHelpers;
 
 namespace ResultTypes.CodeAnalysis.Tests;
 

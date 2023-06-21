@@ -1,4 +1,4 @@
-namespace Playground;
+namespace Ironclad.Relations.Playground;
 
 public class MonogamousPerson
 {
@@ -12,7 +12,7 @@ public class MonogamousPerson
 	}
 }
 
-public class UndirectedRelationshipManager<T> where T : class
+public sealed class UndirectedRelationshipManager<T> where T : class
 {
 	private readonly Dictionary<T, T> dictionary = new();
 	
@@ -20,17 +20,23 @@ public class UndirectedRelationshipManager<T> where T : class
 	
 	public void Set(T self, T? value)
 	{
-		if (dictionary.ContainsKey(self))
-			throw new InvalidOperationException();
+		RemoveConnection(self);
 		if (value is null)
-		{
-			dictionary.Remove(dictionary[self]);
-			dictionary.Remove(self);
 			return;
-		}
-		if (dictionary.ContainsKey(value))
-			throw new InvalidOperationException();
+		RemoveConnection(value);
 		dictionary.Add(self, value);
 		dictionary.Add(value, self);
+	}
+
+	private void RemoveConnection(T self)
+	{
+		if (!dictionary.TryGetValue(self, out var other)) 
+			return;
+		if (!dictionary.TryGetValue(other, out var shouldBeSelf))
+			throw new InvalidStateException();
+		if (shouldBeSelf != self)
+			throw new InvalidStateException();
+		dictionary.Remove(other);
+		dictionary.Remove(self);
 	}
 }

@@ -24,14 +24,7 @@ public readonly struct Result<TError>
     this.success = success;
     this.error = error;
   }
-
-  /// <summary>
-  /// Implicitly converts a <see cref="Result{TError}"/> to a <see cref="bool"/>, indicating whether the operation
-  /// succeeded.
-  /// </summary>
-  /// <param name="result">The result to convert.</param>
-  public static implicit operator bool(Result<TError> result) => result.success;
-
+  
   /// <summary>
   /// Implicitly converts an error of type <typeparamref name="TError"/> to a <see cref="Result{TError}"/> with a
   /// failure status.
@@ -59,6 +52,13 @@ public readonly struct Result<TError>
   {
     if (!success) throw exception;
   }
+
+  /// <summary>
+  /// Determines whether the operation was successful.
+  /// </summary>
+  /// <returns><c>true</c> if the operation was successful; otherwise, <c>false</c>.</returns>
+  [SuppressMessage("ReSharper", "ConvertToAutoPropertyWhenPossible")]
+  public bool IsSuccess => success;
 
   /// <summary>
   /// Determines whether the operation produced an error.

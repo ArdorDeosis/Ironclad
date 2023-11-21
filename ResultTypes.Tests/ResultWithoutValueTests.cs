@@ -7,26 +7,6 @@ public class ResultWithoutValueTests
   private static readonly Result<int> ErrorResult = Result<int>.Error(ErrorValue);
 
   [Test]
-  public void ImplicitConversionToBool_ReturnsTrue_WhenSuccess()
-  {
-    // ACT
-    bool result = Result<int>.Success;
-
-    // ASSERT
-    Assert.That(result, Is.True);
-  }
-
-  [Test]
-  public void ImplicitConversionToBool_ReturnsFalse_WhenError()
-  {
-    // ACT
-    bool result = ErrorResult;
-
-    // ASSERT
-    Assert.That(result, Is.False);
-  }
-
-  [Test]
   public void ImplicitConversionFromError_CreatesResultWithFailureStatus()
   {
     // ACT
@@ -37,6 +17,7 @@ public class ResultWithoutValueTests
     {
       Assert.That(result.IsError());
       Assert.That(result.IsError(out _));
+      Assert.That(result.IsSuccess, Is.False);
     });
   }
 
@@ -74,6 +55,20 @@ public class ResultWithoutValueTests
   {
     // ACT & ASSERT
     Assert.That(() => Result<int>.Success.OrThrow(new TestException()), Throws.Nothing);
+  }
+
+  [Test]
+  public void IsSuccess_ReturnsTrue_WhenResultIsSuccess()
+  {
+    // ACT & ASSERT
+    Assert.That(Result<int>.Success.IsSuccess, Is.True);
+  }
+
+  [Test]
+  public void IsSuccess_ReturnsFalse_WhenResultIsError()
+  {
+    // ACT & ASSERT
+    Assert.That(ErrorResult.IsSuccess, Is.False);
   }
 
   [Test]

@@ -2,6 +2,7 @@
 
 public enum ResultTypeInstanceState
 {
+	Unchanged,
 	Unknown,
 	Failure,
 	Success,

@@ -12,7 +12,7 @@ class TestClass
   private void AnotherTestMethod()
   {
 		var x = 5;
-		while (x > 0) {
+		while (x > 0 && x < 78 || x is >= 9 and < 67) {
 			x--;
 		}
 		Console.WriteLine(x);

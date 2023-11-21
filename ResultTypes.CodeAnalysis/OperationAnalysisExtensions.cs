@@ -122,7 +122,7 @@ internal static class OperationAnalysisExtensions
 		if (operation is IConversionOperation
 		    {
 			    Operand: { Type: { } typeConvertedFrom } operand,
-			    Type: { } typeConvertedTo,
+			    Type: { Name: {} typeName } typeConvertedTo,
 		    }
 		    && typeConvertedFrom.IsResultType(out var resultTypeSymbol)
 		    && typeConvertedTo.Equals(resultTypeSymbol.ValueType, SymbolEqualityComparer.Default))

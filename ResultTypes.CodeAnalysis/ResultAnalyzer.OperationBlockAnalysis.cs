@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -7,128 +6,113 @@ using Microsoft.CodeAnalysis.FlowAnalysis;
 
 namespace ResultTypes.CodeAnalysis;
 
+internal class ResultAnalysisState
+{
+  private readonly Dictionary<ISymbol, ResultTypeInstanceState> stateDictionary = new(SymbolEqualityComparer.Default);
+
+  private ResultAnalysisState() { }
+
+  private ResultAnalysisState(IDictionary<ISymbol, ResultTypeInstanceState> data)
+  {
+    stateDictionary = new Dictionary<ISymbol, ResultTypeInstanceState>(data, SymbolEqualityComparer.Default);
+  }
+
+  internal ResultTypeInstanceState this[ISymbol symbol]
+  {
+    get =>
+      stateDictionary.TryGetValue(symbol, out var value)
+        ? value
+        : ResultTypeInstanceState.Unchanged;
+    set
+    {
+      if (value is ResultTypeInstanceState.Unchanged)
+        stateDictionary.Remove(symbol);
+      else
+        stateDictionary[symbol] = value;
+    }
+  }
+
+  internal bool IsEquivalentTo(ResultAnalysisState other) =>
+    stateDictionary.OrderBy(entry => entry.Key).SequenceEqual(
+      other.stateDictionary.OrderBy(entry => entry.Key));
+
+  internal ResultAnalysisState Copy() => new(stateDictionary);
+
+  internal ResultAnalysisState With(ISymbol symbol, ResultTypeInstanceState state)
+  {
+    var result = Copy();
+    result[symbol] = state;
+    return result;
+  }
+
+  internal ResultAnalysisState Combine(ResultAnalysisState other) => Combine(this, other);
+
+  internal static ResultAnalysisState Combine(params ResultAnalysisState[] states) => Combine(states.AsEnumerable());
+  
+  internal static ResultAnalysisState Combine(IEnumerable<ResultAnalysisState> states) =>
+    states.ToList() switch
+    {
+      [] => new ResultAnalysisState(),
+      [var onlyState] => onlyState.Copy(),
+      [var firstState, ..] => new ResultAnalysisState(states
+        .Skip(1)
+        .Aggregate(
+          new HashSet<KeyValuePair<ISymbol, ResultTypeInstanceState>>(firstState.stateDictionary),
+          (intersection, state) =>
+          {
+            intersection.IntersectWith(state.stateDictionary);
+            return intersection;
+          })
+        .ToDictionary(pair => pair.Key, pair => pair.Value, SymbolEqualityComparer.Default)),
+    };
+}
+
 internal sealed partial class ResultAnalyzer
 {
-	/// <summary>
-	/// Analyze all operation blocks in the given context.
-	/// </summary>
-	/// <param name="context">The context whose operation blocks should be analyzed.</param>
-	private void AnalyzeOperationBlocks(OperationBlockAnalysisContext context)
-	{
-		foreach (var operationBlock in context.OperationBlocks)
-			AnalyzeOperationBlock(operationBlock, context);
-	}
+  /// <summary>
+  /// Analyze all operation blocks in the given context.
+  /// </summary>
+  /// <param name="context">The context whose operation blocks should be analyzed.</param>
+  private void AnalyzeOperationBlocks(OperationBlockAnalysisContext context)
+  {
+    foreach (var operationBlock in context.OperationBlocks)
+      AnalyzeOperationBlock(operationBlock, context);
+  }
 
-	private void AnalyzeOperationBlock(IOperation operationBlock, OperationBlockAnalysisContext context)
-	{
-		// This is what needs to happen here:
-		// 
-		// let queue be a queue of basic blocks
-		// let analyzed be a map mapping from basic blocks to states
-		//
-		// enqueue start block
-		//
-		// while (queue is not empty)
-		// 	 let block = queue.pop()
-		//   let inputState = getInputState // (as much as is available)
-		//   if (already analyzed with inputState)
-		//   continue;
-		//   analyze(block)
-		//   add to analyzed with inputState
-		// 	 enqueue childern
-		
-		var graph = context.GetControlFlowGraph(operationBlock);
-		
-		var blocksToBeAnalyzed = new List<BasicBlock>(graph.Blocks);
+  private void AnalyzeOperationBlock(IOperation operationBlock, OperationBlockAnalysisContext context)
+  {
+    var graph = context.GetControlFlowGraph(operationBlock);
 
-		var stateTransitions =
-			new Dictionary<(BasicBlock from, BasicBlock to), Dictionary<ISymbol, ResultTypeInstanceState>>();
+    var blocksToBeAnalyzed = new Queue<BasicBlock>(graph.Blocks.Where(block => block.Predecessors.Length is 0));
 
-		while (TryGetNextBlockToAnalyze(out var block, out var inputState))
-		{
-			blocksToBeAnalyzed.Remove(block);
-			
-			foreach (var operation in block.Operations)
-				AnalyzeNonBranchingOperation(operation, ref inputState, context);
+    var outputState = new Dictionary<BasicBlock, ResultAnalysisState>();
+    var lastInputState = new Dictionary<BasicBlock, ResultAnalysisState>();
 
-			// block is not branching
-			if (block.BranchValue is not null) { }
+    while (blocksToBeAnalyzed.Count > 0)
+    {
+      var block = blocksToBeAnalyzed.Dequeue();
 
-			// saving state(s) (condition-separated) to block-state-transition dictionary
+      var inputState = ResultAnalysisState.Combine(
+        block.Predecessors
+          .Select(branch => branch.Source)
+          .Where(predecessor => outputState.ContainsKey(predecessor))
+          .Select(predecessor => outputState[predecessor])
+      );
 
-			// if (block is { FallThroughSuccessor.Destination: { } fallthrough })
-			// {
-			// 	if (!transitionedStates.ContainsKey(fallthrough))
-			// 		transitionedStates.Add(fallthrough,
-			// 			new Dictionary<BasicBlock, Dictionary<ISymbol, ResultTypeInstanceState>>());
-			// 	transitionedStates[fallthrough].Add(block,
-			// 		new Dictionary<ISymbol, ResultTypeInstanceState>(initialState, SymbolEqualityComparer.Default));
-			// }
-			//
-			// if (block is { ConditionalSuccessor.Destination: { } conditional })
-			// {
-			// 	if (!transitionedStates.ContainsKey(conditional))
-			// 		transitionedStates.Add(conditional,
-			// 			new Dictionary<BasicBlock, Dictionary<ISymbol, ResultTypeInstanceState>>());
-			// 	if (!transitionedStates[conditional].ContainsKey(block)) // TODO: why is this necessary?
-			// 		transitionedStates[conditional].Add(block,
-			// 			new Dictionary<ISymbol, ResultTypeInstanceState>(initialState, SymbolEqualityComparer.Default));
-			// }
-		}
-		
-		bool TryGetNextBlockToAnalyze(
-			[NotNullWhen(true)] out BasicBlock? block,
-			[NotNullWhen(true)] out Dictionary<ISymbol, ResultTypeInstanceState>? inputState)
-		{
-			foreach (var blockToCheck in blocksToBeAnalyzed)
-			{
-				block = blockToCheck;
-				if (TryGetInputStateForBlock(blockToCheck, out inputState))
-					return true;
-			}
+      if (lastInputState.TryGetValue(block, out var lastState) && lastState.IsEquivalentTo(inputState))
+        continue;
 
-			block = default;
-			inputState = default;
-			return false;
-		}
+      lastInputState[block] = inputState.Copy();
 
-		bool TryGetInputStateForBlock(BasicBlock block,
-			[NotNullWhen(true)] out Dictionary<ISymbol, ResultTypeInstanceState>? inputState)
-		{
-			inputState = new Dictionary<ISymbol, ResultTypeInstanceState>(SymbolEqualityComparer.Default);
-			if (block.Predecessors.Length is 0) 
-				return true;
-
-			var incomingStates = block.Predecessors
-				.Select(branch => stateTransitions.TryGetValue((branch.Source, block), out var incomingState)
-					? incomingState
-					: null).ToArray();
-			return TryCombineStates(incomingStates, out inputState);
-		}
-
-		static bool TryCombineStates(
-			IList<Dictionary<ISymbol, ResultTypeInstanceState>?> states,
-			[NotNullWhen(true)] out Dictionary<ISymbol, ResultTypeInstanceState>? combinedState)
-		{
-			combinedState = states.Any(state => state is null)
-				? null
-				: states switch
-				{
-					[] => new Dictionary<ISymbol, ResultTypeInstanceState>(SymbolEqualityComparer.Default),
-					[{ } onlyState] => new Dictionary<ISymbol, ResultTypeInstanceState>(
-						onlyState, SymbolEqualityComparer.Default),
-					[{ } firstState, ..] => states
-						.Skip(1)
-						.Aggregate(
-							new HashSet<KeyValuePair<ISymbol, ResultTypeInstanceState>>(firstState),
-							(intersection, state) =>
-							{
-								intersection.IntersectWith(state);
-								return intersection;
-							})
-						.ToDictionary(pair => pair.Key, pair => pair.Value, SymbolEqualityComparer.Default),
-				};
-			return combinedState is not null;
-		}
-	}
+      foreach (var operation in block.Operations)
+        AnalyzeNonBranchingOperation(operation, inputState, context);
+      
+      if (block is { FallThroughSuccessor.Destination: { } fallthroughSuccessor })
+        blocksToBeAnalyzed.Enqueue(fallthroughSuccessor);
+      if (block is { ConditionalSuccessor.Destination: { } conditionalSuccessor })
+        blocksToBeAnalyzed.Enqueue(conditionalSuccessor);
+      
+      // TODO: save output state according to branching
+    }
+  }
 }

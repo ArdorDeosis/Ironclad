@@ -82,7 +82,7 @@ public readonly struct Result<TValue, TError>
   /// <param name="fallback">The value to return if the result is not successful.</param>
   /// <returns>The value of the result if it is successful, or the specified fallback value otherwise.</returns>
   public TValue Or(TValue fallback) => success ? value : fallback;
-
+  
   /// <summary>
   /// Gets the value of the result if it is successful, or the default value of the value type otherwise.
   /// </summary>
@@ -112,4 +112,6 @@ public readonly struct Result<TValue, TError>
     error = this.error;
     return !success;
   }
+  
+  // TODO: Map functions, e.g. Map<TOut>(Func<TValue, TOut> selector, TOut fallback)
 }

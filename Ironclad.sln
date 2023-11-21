@@ -18,6 +18,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Relations.Playground", "Rel
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeAnalysis.Testing", "CodeAnalysis.Testing\CodeAnalysis.Testing.csproj", "{BE3F235F-7C06-4819-BAF1-A52A680E71D6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Concurrency", "Concurrency\Concurrency.csproj", "{8A24B0FB-37EC-4D02-B7E3-3527CA367C66}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -60,5 +62,9 @@ Global
 		{BE3F235F-7C06-4819-BAF1-A52A680E71D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BE3F235F-7C06-4819-BAF1-A52A680E71D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BE3F235F-7C06-4819-BAF1-A52A680E71D6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8A24B0FB-37EC-4D02-B7E3-3527CA367C66}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A24B0FB-37EC-4D02-B7E3-3527CA367C66}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A24B0FB-37EC-4D02-B7E3-3527CA367C66}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A24B0FB-37EC-4D02-B7E3-3527CA367C66}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

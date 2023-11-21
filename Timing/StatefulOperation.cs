@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Subjects;
+using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 
 namespace Timing;
@@ -53,6 +54,13 @@ public abstract class StatefulOperation<TState> : IDisposable where TState: notn
 	protected StatefulOperation(TState initialState, params CancellationToken[] cancellationTokens)
 	: this(initialState, cancellationTokens.AsEnumerable())
 	{ }
+	
+	/// <summary>
+	/// Gets an awaiter used to await this <see cref="StatefulOperation{TState}"/>.
+	/// </summary>
+	/// <returns>An awaiter instance.</returns>
+	public TaskAwaiter GetAwaiter() => executionTask.GetAwaiter();
+
 
 	/// <summary>
 	/// Cancels the operation.
@@ -63,6 +71,10 @@ public abstract class StatefulOperation<TState> : IDisposable where TState: notn
 	/// The operation to execute. Set <see cref="State"/> to provide state changes to observers.
 	/// </summary>
 	/// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+	/// <remarks>
+	/// This class is built under the assumption that this <see cref="Execute"/> method runs single-threaded. Setting the
+	/// <see cref="State"/> property from multiple threads can lead to inconsistent states.
+	/// </remarks>
 	protected abstract Task Execute(CancellationToken cancellationToken);
 
 	/// <summary>
@@ -78,6 +90,7 @@ public abstract class StatefulOperation<TState> : IDisposable where TState: notn
 		catch (Exception exception)
 		{
 			stateStream.OnError(exception);
+			throw;
 		}
 	}
 

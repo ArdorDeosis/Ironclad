@@ -1,9 +1,57 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 
 namespace Timing;
+
+public enum ValueStreamPartition
+{
+	FullStream,
+	History,
+	CurrentAndFuture,
+	FutureOnly,
+}
+
+public class ValueStream<T> : IObserver<T>
+{
+	private readonly ReplaySubject<T> full = new();
+	private readonly ImmutableList<T> history = ImmutableList<T>.Empty;
+	private readonly Subject<T> future = new();
+	private readonly ReplaySubject<T> currentAndFuture = new(1);
+
+	public ValueStream()
+	{
+		future.Subscribe(value => history.Add(value));
+	}
+	
+	public IObservable<T> Get(ValueStreamPartition partition) =>
+		partition switch {
+			ValueStreamPartition.FullStream => history.ToObservable().Concat(future),
+			ValueStreamPartition.History => history.ToObservable(),
+			ValueStreamPartition.CurrentAndFuture => future.StartWith(history.Last()),
+			ValueStreamPartition.FutureOnly => future,
+			_ => throw new ArgumentOutOfRangeException(nameof(partition), partition, null),
+		};
+
+	public void OnCompleted()
+	{
+		throw new NotImplementedException();
+	}
+
+	public void OnError(Exception error)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void OnNext(T value)
+	{
+		throw new NotImplementedException();
+	}
+}
+
 
 /// <summary>
 /// Represents an operation that maintains a state and can be cancelled.
@@ -18,7 +66,7 @@ public abstract class StatefulOperation<TState> : IDisposable where TState: notn
 	private readonly Task executionTask;
 
 	/// <summary>
-	/// The stream of state changes.
+	/// The stream of states the operation goes through including its history.
 	/// </summary>
 	public IObservable<TState> StateStream => stateStream;
 

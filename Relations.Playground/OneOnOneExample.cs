@@ -1,4 +1,4 @@
-namespace Playground;
+namespace Ironclad.Relations.Playground;
 
 public class MonogamousPerson
 {

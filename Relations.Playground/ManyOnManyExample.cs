@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 
-namespace Playground;
+namespace Ironclad.Relations.Playground;
 
 public class Person
 {

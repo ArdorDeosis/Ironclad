@@ -1,9 +1,9 @@
-﻿namespace RandomNumbers;
+﻿namespace Ironclad.RandomNumbers;
 
 /// <summary>
-/// Generates random numbers using a noise generator and maintains a state.
+/// Generates 8-byte random numbers using a noise generator and maintains a state.
 /// </summary>
-public class RandomNumberGenerator
+public class RandomNumberGenerator8Byte
 {
   /// <summary>
   /// Gets or sets the state of the random number generator.
@@ -12,15 +12,15 @@ public class RandomNumberGenerator
   /// This property represents the current coordinate in the noise field used to generate random numbers. You can use it
   /// to jump in the list of generated values. 
   /// </remarks>
-  public uint State { get; set; }
+  public ulong State { get; set; }
  
-  private readonly Noise noise;
+  private readonly Noise8Byte noise;
   
   /// <param name="seed">The seed value for the noise generator.</param>
   /// <param name="state">The initial state of the random number generator.</param>
-  public RandomNumberGenerator(uint seed = 0, uint state = 0)
+  public RandomNumberGenerator8Byte(ulong seed = 0, ulong state = 0)
   {
-    noise = new Noise(seed);
+    noise = new Noise8Byte(seed);
     State = state;
   }
 
@@ -28,11 +28,11 @@ public class RandomNumberGenerator
   /// Generates the next random byte.
   /// </summary>
   public byte NextByte() => unchecked((byte)noise.Raw(State++));
-  
+
   /// <summary>
   /// Generates the next sequence of random bytes.
   /// </summary>
-  /// <returns>An array of 4 random byte values.</returns>
+  /// <returns>An array of 8 random byte values.</returns>
   public byte[] NextBytes() => BitConverter.GetBytes(noise.Raw(State++));
 
   /// <summary>
@@ -47,17 +47,25 @@ public class RandomNumberGenerator
   /// <param name="min">The lower bound (inclusive) of the random number.</param>
   /// <param name="max">The upper bound (exclusive) of the random number.</param>
   public int NextInt(int min, int max) => (int)(noise[State++] * (max - min)) + min;
+
+  /// <summary>
+  /// Generates the next random integer.
+  /// </summary>
+  /// <param name="max">The upper bound (exclusive) of the random number.</param>
+  public long NextLong(long max = long.MaxValue) => unchecked((long)(noise[State++] * max));
   
   /// <summary>
-  /// Generates the next random unsigned integer.
+  /// Generates the next random integer within a specified range.
   /// </summary>
-  public uint NextUInt() => noise.Raw(State++);
-  
+  /// <param name="min">The lower bound (inclusive) of the random number.</param>
+  /// <param name="max">The upper bound (exclusive) of the random number.</param>
+  public long NextLong(long min, long max) => (int)(noise[State++] * (max - min)) + min;
+
   /// <summary>
   /// Generates the next random unsigned integer within a specified range.
   /// </summary>
   /// <param name="max">The upper bound (exclusive) of the random number.</param>
-  public uint NextUInt(uint max) => (uint)(noise[State++] * max);
+  public uint NextUInt(uint max = uint.MaxValue) => (uint)(noise[State++] * max);
   
   /// <summary>
   /// Generates the next random unsigned integer within a specified range.
@@ -67,22 +75,40 @@ public class RandomNumberGenerator
   public uint NextUInt(uint min, uint max) => (uint)(noise[State++] * (max - min)) + min;
  
   /// <summary>
+  /// Generates the next random unsigned integer.
+  /// </summary>
+  public ulong NextULong() => noise.Raw(State++);
+  
+  /// <summary>
+  /// Generates the next random unsigned integer within a specified range.
+  /// </summary>
+  /// <param name="max">The upper bound (exclusive) of the random number.</param>
+  public ulong NextULong(ulong max) => (ulong)(noise[State++] * max);
+  
+  /// <summary>
+  /// Generates the next random unsigned integer within a specified range.
+  /// </summary>
+  /// <param name="min">The lower bound (inclusive) of the random number.</param>
+  /// <param name="max">The upper bound (exclusive) of the random number.</param>
+  public ulong NextULong(ulong min, ulong max) => (ulong)(noise[State++] * (max - min)) + min;
+ 
+  /// <summary>
   /// Generates the next random float.
   /// </summary>
-  public float NextFloat() => noise[State++];
+  public float NextFloat() => (float)noise[State++];
   
   /// <summary>
   /// Generates the next random float within a specified range.
   /// </summary>
   /// <param name="max">The upper bound (exclusive) of the random number.</param>
-  public float NextFloat(float max) => noise[State++] * max;
+  public float NextFloat(float max) => (float)(noise[State++] * max);
   
   /// <summary>
   /// Generates the next random float within a specified range.
   /// </summary>
   /// <param name="min">The lower bound (inclusive) of the random number.</param>
   /// <param name="max">The upper bound (exclusive) of the random number.</param>
-  public float NextFloat(float min, float max) => noise[State++] * (max - min) + min;
+  public float NextFloat(float min, float max) => (float)(noise[State++] * (max - min)) + min;
   
   /// <summary>
   /// Generates the next random double.

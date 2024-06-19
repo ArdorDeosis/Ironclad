@@ -3,7 +3,7 @@ using Ironclad.CodeAnalysis.Testing;
 using Ironclad.ResultTypes;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace ResultTypes.CodeAnalysis.Tests;
+namespace ResultTypes.CodeAnalysis.Tests.TestHelpers;
 
 /// <summary>
 /// An analyzer test referencing the <see cref="ResultTypes"/> namespace in the test environment. (Tested code can

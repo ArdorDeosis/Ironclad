@@ -23,4 +23,8 @@
         <Using Include="NUnit.Framework"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\RandomNumbers\RandomNumbers.csproj" />
+    </ItemGroup>
+
 </Project>

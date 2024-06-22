@@ -1,17 +1,18 @@
 ﻿namespace Ironclad.RandomNumbers;
 
 /// <summary>
-/// A 4-byte noise generator with up to 1 dimension of input.
+/// A deterministic discrete 1-dimensional noise field with 4-byte values.
+/// Values are retrieved as <tt>float</tt> in range [0,1) or as raw <tt>uint</tt> values.
 /// </summary>
-public interface INoise4Byte1
+public interface INoise1D4Byte
 {
   /// <summary>
-  /// Gets the raw uint noise value of the specified 1-dimensional coordinate.
+  /// Gets the raw <tt>uint</tt> noise value of the specified 1-dimensional coordinate.
   /// </summary>
   uint Raw(uint d1);
 
   /// <summary>
-  /// Gets the raw uint noise value of the specified 1-dimensional coordinate.
+  /// Gets the raw <tt>uint</tt> noise value of the specified 1-dimensional coordinate.
   /// </summary>
   uint Raw(int d1);
 

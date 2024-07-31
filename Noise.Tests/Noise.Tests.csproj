@@ -4,10 +4,11 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
-        <AssemblyName>Ironclad.RandomNumbers.Tests</AssemblyName>
-        <RootNamespace>Ironclad.RandomNumbers.Tests</RootNamespace>
+        <AssemblyName>Ironclad.Noise.Tests</AssemblyName>
+        <RootNamespace>Ironclad.Noise.Tests</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -23,7 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\RandomNumbers\RandomNumbers.csproj" />
+      <ProjectReference Include="..\Noise\Noise.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,4 +1,4 @@
-﻿namespace IronClad.Noise;
+﻿namespace Ironclad.Noise;
 
 /// <summary>
 /// A deterministic discrete 9-dimensional noise field with 8-byte values.

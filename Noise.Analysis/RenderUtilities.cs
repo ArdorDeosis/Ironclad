@@ -1,6 +1,6 @@
 ﻿using System.Drawing;
 
-namespace IronClad.Noise.Analysis;
+namespace Ironclad.Noise.Analysis;
 
 internal static class RenderUtilities
 {

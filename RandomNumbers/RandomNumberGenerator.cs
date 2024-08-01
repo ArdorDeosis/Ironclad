@@ -1,4 +1,4 @@
-﻿using IronClad.Noise;
+﻿using Ironclad.Noise;
 
 namespace Ironclad.RandomNumbers;
 

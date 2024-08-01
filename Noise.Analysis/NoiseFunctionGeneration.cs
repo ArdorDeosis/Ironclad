@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace IronClad.Noise.Analysis;
+namespace Ironclad.Noise.Analysis;
 
 internal static class NoiseFunctionGeneration
 {

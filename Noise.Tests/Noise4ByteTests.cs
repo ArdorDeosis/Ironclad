@@ -1,5 +1,5 @@
 using FluentAssertions;
-using IronClad.Noise;
+using Ironclad.Noise;
 
 namespace Ironclad.Noise.Tests;
 

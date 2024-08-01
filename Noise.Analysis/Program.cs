@@ -1,8 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.Drawing.Imaging;
-using IronClad.Noise;
-using IronClad.Noise.Analysis;
+using Ironclad.Noise;
+using Ironclad.Noise.Analysis;
 
 
 uint[] seeds = [0, 0xC0FFEE, 0xBEEF, 0xBAD_C0DE_FU];

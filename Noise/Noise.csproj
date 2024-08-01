@@ -4,8 +4,8 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <AssemblyName>IronClad.Noise</AssemblyName>
-        <RootNamespace>IronClad.Noise</RootNamespace>
+        <AssemblyName>Ironclad.Noise</AssemblyName>
+        <RootNamespace>Ironclad.Noise</RootNamespace>
     </PropertyGroup>
 
 </Project>

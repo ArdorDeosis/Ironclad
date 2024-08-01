@@ -5,8 +5,8 @@
         <TargetFramework>net8.0-windows</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <AssemblyName>IronClad.Noise.Analysis</AssemblyName>
-        <RootNamespace>IronClad.Noise.Analysis</RootNamespace>
+        <AssemblyName>Ironclad.Noise.Analysis</AssemblyName>
+        <RootNamespace>Ironclad.Noise.Analysis</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

@@ -28,6 +28,10 @@ The library includes interfaces for every combination of 4 or 8 byte values and 
 
 (see [Interfaces directory](Interfaces))
 
+# Validation
+
+In [/Noise.Analysis](../Noise.Analysis) you can find code that renders noise fields of different dimensional combinations for visual validation of the output (currently only for the 4-byte version). See the [output directory](../Noise.Analysis/output) for 1024x1024 pixel PNGs. 
+
 # Reference
 
 The noise algorithm used in this library was introduced by Squirrel Eiserloh. You can watch his talk on YouTube: [Squirrel Eiserloh's GDC 2017 Talk](https://www.youtube.com/watch?v=LWFzPP8ZbdU).

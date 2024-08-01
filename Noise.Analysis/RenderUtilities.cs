@@ -4,10 +4,16 @@ namespace IronClad.Noise.Analysis;
 
 internal static class RenderUtilities
 {
-  public static Bitmap Visualize(Func<int, int, float> pixelValueFunc) => 
-    Visualize(pixelValueFunc, 1024, 1024);
+  /// <summary>
+  /// Creates a 1024x1024 bitmap with color values defined by the specified value function.
+  /// </summary>
+  public static Bitmap Visualize(Func<int, int, float> valueFunction) => 
+    Visualize(valueFunction, 1024, 1024);
   
-  public static Bitmap Visualize(Func<int, int, float> pixelValueFunc, int width, int height)
+  /// <summary>
+  /// Creates a bitmap of specified size with color values defined by the specified value function.
+  /// </summary>
+  public static Bitmap Visualize(Func<int, int, float> valueFunction, int width, int height)
   {
     var bitmap = new Bitmap(width, height);
 
@@ -15,7 +21,7 @@ internal static class RenderUtilities
     {
       for (var y = 0; y < height; y++)
       {
-        var grayValue = (int)(pixelValueFunc(x, y) * 255);
+        var grayValue = (int)(valueFunction(x, y) * 255);
         var color = Color.FromArgb(grayValue, grayValue, grayValue);
         bitmap.SetPixel(x, y, color);
       }

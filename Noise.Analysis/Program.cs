@@ -5,12 +5,6 @@ using IronClad.Noise;
 using IronClad.Noise.Analysis;
 
 
-if (!OperatingSystem.IsWindows())
-{
-  Console.WriteLine("this only runs on Windows");
-  return;
-}
-
 uint[] seeds = [0, 0xC0FFEE, 0xBEEF, 0xBAD_C0DE_FU];
 
 foreach (var seed in seeds)

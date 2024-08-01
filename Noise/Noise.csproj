@@ -1,27 +1,26 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>netstandard2.1</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <AssemblyName>Ironclad.Noise</AssemblyName>
-        <RootNamespace>Ironclad.Noise</RootNamespace>
-        <LangVersion>12</LangVersion>
-        <Version>1.0.0</Version>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Ironclad.Noise</AssemblyName>
+    <RootNamespace>Ironclad.Noise</RootNamespace>
+    <LangVersion>12</LangVersion>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
 
 
-    <PropertyGroup>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <RepositoryUrl>https://github.com/ArdorDeosis/Ironclad/tree/master/Noise</RepositoryUrl>
-        <RepositoryType>git</RepositoryType>
-    </PropertyGroup>
+  <PropertyGroup>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/ArdorDeosis/Ironclad/tree/master/Noise</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
 
 
-    <ItemGroup>
-      <None Remove="README.md" />
-      <Content Include="README.md" />
-    </ItemGroup>
+  <ItemGroup>
+    <Content Include="README.md" CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
 
 </Project>

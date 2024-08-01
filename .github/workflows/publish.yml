@@ -1,10 +1,18 @@
-﻿name: Publish Ironclad.Noise to NuGet
+﻿name: Publish to NuGet
 
 on:
   workflow_dispatch:
+    inputs:
+      package_name:
+        description: 'Select package to publish'
+        required: true
+        type: choice
+        options:
+          - Noise
+          - RandomNumbers
 
 jobs:
-  test:
+  run-tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,12 +24,12 @@ jobs:
         with:
           dotnet-version: '8.x'
 
-      - name: Run Ironclad.Noise.Tests
-        run: dotnet test ./Noise.Tests/Noise.Tests.csproj --configuration Release
+      - name: Run Tests
+        run: dotnet test ./${{ github.event.inputs.package_name }}.Tests/${{ github.event.inputs.package_name }}.Tests.csproj --configuration Release
 
   publish:
     runs-on: ubuntu-latest
-    needs: test  # This job will only run if the 'test' job succeeds
+    needs: run-tests
 
     steps:
       - name: Checkout Code
@@ -33,9 +41,30 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Pack
-        run: dotnet pack ./Noise/Noise.csproj --configuration Release --output ./packages
+        run: dotnet pack ./${{ github.event.inputs.package_name }}/$(github.event.inputs.package_name).csproj --configuration Release --output ./packages
 
       - name: Push to NuGet
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: dotnet nuget push ./packages/Ironclad.Noise.*.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push ./packages/${{ github.event.inputs.package_name }}.*.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json
+
+  tag-versions:
+    runs-on: ubuntu-latest
+    needs: publish
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Get Version
+        id: get_version
+        run: |
+          VERSION=$(dotnet list package --include-transitive | grep -m1 '${{ github.event.inputs.package_name }}' | awk '{print $3}')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Tag the version
+        run: |
+          git tag ${{ github.event.inputs.package_name }}-v${{ env.VERSION }}
+          git push origin ${{ github.event.inputs.package_name }}-v${{ env.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

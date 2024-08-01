@@ -7,6 +7,8 @@
         <AssemblyName>Ironclad.Noise</AssemblyName>
         <RootNamespace>Ironclad.Noise</RootNamespace>
         <LangVersion>12</LangVersion>
+        <Version>0.0.1</Version>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
 
 </Project>

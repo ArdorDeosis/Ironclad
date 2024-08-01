@@ -2,7 +2,6 @@
 <package>
   <metadata>
     <id>Ironclad.Noise</id>
-    <version>0.0.1</version>
     <authors>Theobald Beyer</authors>
     <owners>Theobald Beyer</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>

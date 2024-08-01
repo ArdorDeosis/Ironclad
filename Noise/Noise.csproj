@@ -9,18 +9,16 @@
     <LangVersion>12</LangVersion>
     <Version>1.0.0</Version>
   </PropertyGroup>
-
-
+  
   <PropertyGroup>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/ArdorDeosis/Ironclad/tree/master/Noise</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
-
-
+  
   <ItemGroup>
-    <Content Include="README.md" CopyToOutputDirectory="PreserveNewest"/>
+    <None Include="README.md" Pack="True" PackagePath="\"/>
   </ItemGroup>
-
+  
 </Project>

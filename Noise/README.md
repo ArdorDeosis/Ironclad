@@ -1,4 +1,4 @@
-﻿# Overview
+# Overview
 
 This package provides a noise generation library with implementations for 4-byte and 8-byte values. It includes deterministic discrete noise fields for 1D to 9D inputs. The library is based on algorithms introduced by [Squirrel Eiserloh](#reference).
 

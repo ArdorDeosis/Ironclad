@@ -33,9 +33,9 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Pack
-        run: dotnet pack ./Noise/Noise.csproj --configuration Release --output ./output
+        run: dotnet pack ./Noise/Noise.csproj --configuration Release --output ./packages
 
       - name: Push to NuGet
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: dotnet nuget push ./output/*.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push ./packages/Ironclad.Noise.*.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json

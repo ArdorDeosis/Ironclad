@@ -12,7 +12,7 @@
 
   <PropertyGroup>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReadmeFile>nuget-readme.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/ArdorDeosis/Ironclad/tree/master/Noise</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>

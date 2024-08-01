@@ -1,58 +1,42 @@
-﻿name: Manual Versioning, Test, and Release
+﻿name: Publish Ironclad.Noise to NuGet
 
 on:
   workflow_dispatch:
-    inputs:
-      version_type:
-        description: 'Which version part to bump: major, minor, or patch'
-        required: true
-        default: 'patch'
 
 jobs:
-  version_and_release:
+  publish:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v2
 
-      - name: Set up .NET
+      - name: Set Up .NET
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '8.x'
 
-      - name: Get current version
-        id: get_version
-        run: echo "Current version is $(git describe --tags --abbrev=0)"
-
-      - name: Bump version
-        id: bump_version
+      - name: Extract Version From .nuspec
+        id: extract_version
         run: |
-          version=$(git describe --tags --abbrev=0)
-          version_type=${{ github.event.inputs.version_type }}
-          if [ "$version_type" == "major" ]; then
-            new_version=$(echo $version | awk -F. '{print $1+1 ".0.0"}')
-          elif [ "$version_type" == "minor" ]; then
-            new_version=$(echo $version | awk -F. '{print $1 "." $2+1 ".0"}')
-          else
-            new_version=$(echo $version | awk -F. '{print $1 "." $2 "." $3+1}')
+          version=$(grep -oPm1 "(?<=<version>)[^<]+" YourProject.nuspec)
+          echo "version=$version" >> $GITHUB_ENV
+
+      - name: Check if Version Exists Already
+        run: |
+          exists=$(curl -s https://api.nuget.org/v3-flatcontainer/yourpackageid/${{ env.version }}/index.json | grep -c '404')
+          if [ "$exists" -eq 0 ]; then
+            echo "Error: Version ${{ env.version }} already exists on NuGet."
+            exit 1
           fi
-          echo "New version is $new_version"
-          echo "new_version=$new_version" >> $GITHUB_ENV
 
       - name: Run Unit Tests
         run: dotnet test --configuration Release
 
-      - name: Tag new version
-        run: git tag ${{ env.new_version }}
-
-      - name: Build and Pack
-        run: dotnet pack --configuration Release /p:PackageVersion=${{ env.new_version }}
+      - name: Pack
+        run: dotnet pack --configuration Release
 
       - name: Push to NuGet
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: dotnet nuget push **/*.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json
-
-      - name: Push Tag
-        run: git push origin ${{ env.new_version }}

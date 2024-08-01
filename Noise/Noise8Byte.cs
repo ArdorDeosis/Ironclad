@@ -44,7 +44,7 @@ public class Noise8Byte : INoise9D8Byte
   public ulong Raw(ulong d1) => Squirrel3(d1);
 
   /// <inheritdoc />
-  public ulong Raw(ulong d1, ulong d2) => Squirrel3(unchecked(d1 + d2 * Prime1));
+  public ulong Raw(ulong d1, ulong d2) => Squirrel3(unchecked(d1 ^ d2 * Prime1));
 
   /// <inheritdoc />
   public ulong Raw(ulong d1, ulong d2, ulong d3) => Squirrel3(unchecked(d1 ^ d2 * Prime1 ^ d3 * Prime2));

@@ -1,3 +1,4 @@
+using FluentAssertions;
 using IronClad.Noise;
 
 namespace Ironclad.Noise.Tests;
@@ -48,6 +49,16 @@ public class Noise4ByteTests
     ],
   };
 
+  private static IEnumerable<(object seedObject, uint expectedSeed)> SeedObjectsAndSeeds =>
+    new[]
+    {
+      "some string",
+      true,
+      new object(),
+      new { Name = "Horst", Number = 1337 },
+      (int[]) [1, 2, 3, 4, 5],
+    }.Select(obj => (obj, unchecked((uint)obj.GetHashCode())));
+
   [Test]
   public void DefaultSeed_IsZero()
   {
@@ -55,7 +66,7 @@ public class Noise4ByteTests
     var noise = new Noise4Byte();
 
     // ASSERT
-    Assert.That(noise.Seed, Is.EqualTo(0));
+    noise.Seed.Should().Be(0);
   }
 
   [Test]
@@ -65,7 +76,7 @@ public class Noise4ByteTests
     var noise = new Noise4Byte(null);
 
     // ASSERT
-    Assert.That(noise.Seed, Is.EqualTo(0));
+    noise.Seed.Should().Be(0);
   }
 
   [TestCase(-1, uint.MaxValue)]
@@ -76,45 +87,55 @@ public class Noise4ByteTests
     var noise = new Noise4Byte(seed);
 
     // ASSERT
-    Assert.That(noise.Seed, Is.EqualTo(expectedSeed));
+    noise.Seed.Should().Be(expectedSeed);
   }
 
-  private static IEnumerable<object> SeedObjects()
-  {
-    yield return "some string";
-    yield return true;
-    yield return new object();
-    yield return new { Name = "Horst", Number = 1337 };
-    yield return (int[]) [1, 2, 3, 4, 5];
-  }
-
-  [TestCaseSource(nameof(SeedObjects))]
-  public void ObjectSeed_IsObjectHashCode(object obj)
+  [TestCaseSource(nameof(SeedObjectsAndSeeds))]
+  public void ObjectSeed_IsObjectHashCode((object seedObject, uint expectedSeed) obj)
   {
     // ARRANGE
-    var noise = new Noise4Byte(obj);
-    var expectedHashCode = unchecked((uint)obj.GetHashCode());
+    var noise = new Noise4Byte(obj.seedObject);
 
     // ASSERT
-    Assert.That(noise.Seed, Is.EqualTo(expectedHashCode));
+    noise.Seed.Should().Be(obj.expectedSeed);
   }
 
-  [TestCase(0u)]
-  [TestCase(0x55555555u)]
-  [TestCase(0xAAAAAAAA)]
-  [TestCase(0x0F0F0F0Fu)]
-  [TestCase(0xF0F0F0F0)]
-  [TestCase(0xFFFFFFFF)]
-  public void SampleValuesAreAsExpected(uint seed)
+  [TestCaseSource(nameof(KnownValues))]
+  public void SampleValuesAreAsExpected(KeyValuePair<uint, uint[]> expected)
   {
     // ARRANGE
-    var noise = new Noise4Byte(seed);
+    var noise = new Noise4Byte(expected.Key);
 
     // ACT
     var values = Enumerable.Range(0, 20).Select(n => noise.Raw(n)).ToArray();
 
     // ASSERT
-    Assert.That(values, Is.EqualTo(KnownValues[seed]));
+    values.Should().BeEquivalentTo(expected.Value);
+  }
+
+  [Test]
+  public void UnusedDimensionsZero_ValuesAreEqual()
+  {
+    // ARRANGE
+    const uint c = 0xC0FFEE;
+    var noise = new Noise4Byte();
+    var expectedValue = noise[c];
+
+    // ACT
+    float[] values =
+    [
+      noise[c, 0],
+      noise[c, 0, 0],
+      noise[c, 0, 0, 0],
+      noise[c, 0, 0, 0, 0],
+      noise[c, 0, 0, 0, 0, 0],
+      noise[c, 0, 0, 0, 0, 0, 0],
+      noise[c, 0, 0, 0, 0, 0, 0, 0],
+      noise[c, 0, 0, 0, 0, 0, 0, 0, 0],
+    ];
+    
+    // ASSERT
+    values.Should().AllBeEquivalentTo(expectedValue);
   }
 
   /// <summary>
@@ -133,8 +154,8 @@ public class Noise4ByteTests
     // ASSERT
     Assert.Multiple(() =>
     {
-      Assert.That(value1, Is.EqualTo(3722053045));
-      Assert.That(value2, Is.EqualTo(167249036));
+      value1.Should().Be(3722053045);
+      value2.Should().Be(167249036);
     });
   }
 }

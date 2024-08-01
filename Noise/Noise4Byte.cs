@@ -44,7 +44,7 @@ public class Noise4Byte : INoise9D4Byte
   public uint Raw(uint d1) => Squirrel3(d1);
 
   /// <inheritdoc />
-  public uint Raw(uint d1, uint d2) => Squirrel3(unchecked(d1 + d2 * Prime1));
+  public uint Raw(uint d1, uint d2) => Squirrel3(unchecked(d1 ^ d2 * Prime1));
 
   /// <inheritdoc />
   public uint Raw(uint d1, uint d2, uint d3) => Squirrel3(unchecked(d1 ^ d2 * Prime1 ^ d3 * Prime2));

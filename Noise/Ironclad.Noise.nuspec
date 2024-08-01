@@ -1,0 +1,17 @@
+﻿<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>Ironclad.Noise</id>
+    <version>0.0.1</version>
+    <authors>Theobald Beyer</authors>
+    <owners>Theobald Beyer</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Deterministic value noise functions with up to 9 dimensions and implementations for 4-byte and 8-byte values.</description>
+    <releaseNotes>test release</releaseNotes>
+    <copyright>© 2024 Theobald Beyer. All rights reserved.</copyright>
+    <tags>noise procedural generation ironclad</tags>
+  </metadata>
+  <files>
+    <file src="bin/Release/netstandard2.0/Ironclad.Noise.dll" target="lib/netstandard2.0/"/>
+  </files>
+</package>

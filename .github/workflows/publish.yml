@@ -16,20 +16,6 @@ jobs:
         with:
           dotnet-version: '8.x'
 
-      - name: Extract Version From .nuspec
-        id: extract_version
-        run: |
-          version=$(grep -oPm1 "(?<=<version>)[^<]+" ./Noise/Ironclad.Noise.nuspec)
-          echo "version=$version" >> $GITHUB_ENV
-
-      - name: Check if Version Exists Already
-        run: |
-          exists=$(curl -s https://api.nuget.org/v3-flatcontainer/Ironclad.Noise/${{ env.version }}/index.json | grep -c '404')
-          if [ "$exists" -eq 0 ]; then
-            echo "Error: Version ${{ env.version }} already exists on NuGet."
-            exit 1
-          fi
-
       - name: Run Unit Tests
         run: dotnet test --configuration Release
 

@@ -7,8 +7,15 @@
         <AssemblyName>Ironclad.Noise</AssemblyName>
         <RootNamespace>Ironclad.Noise</RootNamespace>
         <LangVersion>12</LangVersion>
-        <Version>0.0.1</Version>
+        <Version>1.0.0</Version>
+    </PropertyGroup>
+
+
+    <PropertyGroup>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <RepositoryUrl>https://github.com/ArdorDeosis/Ironclad/tree/master/Noise</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
     </PropertyGroup>
 
 </Project>

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  publish:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,13 +16,26 @@ jobs:
         with:
           dotnet-version: '8.x'
 
-      - name: Run Unit Tests
-        run: dotnet test --configuration Release
+      - name: Run Ironclad.Noise.Tests
+        run: dotnet test ./Noise.Tests/Noise.Tests.csproj --configuration Release
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: test  # This job will only run if the 'test' job succeeds
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Set Up .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.x'
 
       - name: Pack
-        run: dotnet pack --configuration Release
+        run: dotnet pack ./Noise/Noise.csproj --configuration Release --output ./output
 
       - name: Push to NuGet
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: dotnet nuget push **/*.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push ./output/*.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json

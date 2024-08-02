@@ -1,30 +1,41 @@
-﻿namespace Ironclad.RandomNumbers.Tests;
+﻿using FluentAssertions;
+
+namespace Ironclad.RandomNumbers.Tests;
 
 public class RandomNumberGeneratorTests
 {
-  private static IEnumerable<object> SeedObjects()
-  {
-    yield return "some string";
-    yield return true;
-    yield return new object();
-    yield return new { Name = "Horst", Number = 1337 };
-    yield return (int[]) [1, 2, 3, 4, 5];
-  }
+  /// <summary>
+  /// An assortment of different objects and the seed they are expected to result in.
+  /// </summary>
+  private static IEnumerable<(object seedObject, uint expectedSeed)> SeedObjectsAndSeeds =>
+    new[]
+    {
+      "some string",
+      true,
+      new object(),
+      new { Name = "Horst", Number = 1337 },
+      (int[]) [1, 2, 3, 4, 5],
+    }.Select(obj => (obj, unchecked((uint)obj.GetHashCode())));
 
-  private static IEnumerable<Action<RandomNumberGenerator>> StateChangingActions()
-  {
-    yield return rng => rng.NextUInt();
-    yield return rng => rng.NextFloat();
-    yield return rng => rng.NextDouble();
-  }
-  
-  private static IEnumerable<Func<uint, RandomNumberGenerator>> StateSettingConstructors()
-  {
-    yield return state => new RandomNumberGenerator(0xFU, state);
-    yield return state => new RandomNumberGenerator(0xBEEF, state);
-    yield return state => new RandomNumberGenerator(new {}, state);
-  }
-  
+  /// <summary>
+  /// All constructors that create a RandomNumberGenerator with specific state.
+  /// </summary>
+  private static IEnumerable<Func<uint, RandomNumberGenerator>> StateSettingConstructors =>
+  [
+    state => new RandomNumberGenerator(0xFU, state),
+    state => new RandomNumberGenerator(0xBEEF, state),
+    state => new RandomNumberGenerator(new { }, state),
+  ];
+
+  /// <summary>
+  /// Actions on a RandomNumberGenerator that should increase its state when executed.
+  /// </summary>
+  private static IEnumerable<Action<RandomNumberGenerator>> StateChangingActions =>
+  [
+    rng => rng.NextUInt(),
+    rng => rng.NextFloat(),
+  ];
+
   [Test]
   public void DefaultSeedAndStateAreZero()
   {
@@ -34,8 +45,8 @@ public class RandomNumberGeneratorTests
     // ASSERT
     Assert.Multiple(() =>
     {
-      Assert.That(rng.Seed, Is.EqualTo(0));
-      Assert.That(rng.State, Is.EqualTo(0));
+      rng.Seed.Should().Be(0);
+      rng.State.Should().Be(0);
     });
   }
   
@@ -48,7 +59,7 @@ public class RandomNumberGeneratorTests
     var rng = new RandomNumberGenerator(seed);
     
     // ASSERT
-    Assert.That(rng.Seed, Is.EqualTo(seed));
+    rng.Seed.Should().Be(seed);
   }
   
   [TestCase(0, 0u)]
@@ -60,18 +71,17 @@ public class RandomNumberGeneratorTests
     var rng = new RandomNumberGenerator(seed);
     
     // ASSERT
-    Assert.That(rng.Seed, Is.EqualTo(expectedSeed));
+    rng.Seed.Should().Be(expectedSeed);
   }
 
-  [TestCaseSource(nameof(SeedObjects))]
-  public void ConstructorWithObjectSeed_SeedIsSetToHashCode(object obj)
+  [TestCaseSource(nameof(SeedObjectsAndSeeds))]
+  public void ConstructorWithObjectSeed_SeedIsSetToHashCode((object seedObject, uint expectedSeed) data)
   {
     // ACT
-    var rng = new RandomNumberGenerator(obj);
-    var expectedHashCode = unchecked((uint)obj.GetHashCode());
+    var rng = new RandomNumberGenerator(data.seedObject);
     
     // ASSERT
-    Assert.That(rng.Seed, Is.EqualTo(expectedHashCode));
+    rng.Seed.Should().Be(data.expectedSeed);
   }
 
   [Test]
@@ -81,7 +91,7 @@ public class RandomNumberGeneratorTests
     var rng = new RandomNumberGenerator(null);
     
     // ASSERT
-    Assert.That(rng.Seed, Is.EqualTo(0));
+    rng.Seed.Should().Be(0);
   }
 
   [TestCaseSource(nameof(StateSettingConstructors))]
@@ -94,7 +104,7 @@ public class RandomNumberGeneratorTests
     var rngInt = constructorMethod(state);
     
     // ASSERT
-    Assert.That(rngInt.State, Is.EqualTo(state));
+    rngInt.State.Should().Be(state);
   }
 
   [Test]
@@ -104,12 +114,13 @@ public class RandomNumberGeneratorTests
   {
     // ARRANGE
     var rng = new RandomNumberGenerator(0xFU, initialState);
+    var expectedState = initialState + 1;
     
     // ACT
     action(rng);
     
     // ASSERT
-    Assert.That(rng.State, Is.EqualTo(initialState + 1));
+    rng.State.Should().Be(expectedState);
   }
   
   [Test]
@@ -124,6 +135,6 @@ public class RandomNumberGeneratorTests
     var result2 = rng.NextByte();
 
     // ASSERT
-    Assert.That(result1, Is.EqualTo(result2));
+    result1.Should().Be(result2);
   }
 }

@@ -91,13 +91,13 @@ public class Noise4ByteTests
   }
 
   [TestCaseSource(nameof(SeedObjectsAndSeeds))]
-  public void ObjectSeed_IsObjectHashCode((object seedObject, uint expectedSeed) obj)
+  public void ObjectSeed_IsObjectHashCode((object seedObject, uint expectedSeed) data)
   {
     // ARRANGE
-    var noise = new Noise4Byte(obj.seedObject);
+    var noise = new Noise4Byte(data.seedObject);
 
     // ASSERT
-    noise.Seed.Should().Be(obj.expectedSeed);
+    noise.Seed.Should().Be(data.expectedSeed);
   }
 
   [TestCaseSource(nameof(KnownValues))]

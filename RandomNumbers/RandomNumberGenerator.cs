@@ -58,7 +58,4 @@ public class RandomNumberGenerator : IRandomNumberGenerator
  
   /// <inheritdoc />
   public float NextFloat() => noise[State++];
-  
-  /// <inheritdoc />
-  public double NextDouble() => noise[State++];
 }

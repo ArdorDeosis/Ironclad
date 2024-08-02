@@ -1,32 +1,43 @@
-﻿namespace Ironclad.RandomNumbers.Tests;
+﻿using FluentAssertions;
+
+namespace Ironclad.RandomNumbers.Tests;
 
 public class RandomNumberGenerator8ByteTests
 {
-  private static IEnumerable<object> SeedObjects()
-  {
-    yield return "some string";
-    yield return true;
-    yield return new object();
-    yield return new { Name = "Horst", Number = 1337 };
-    yield return (int[]) [1, 2, 3, 4, 5];
-  }
+  /// <summary>
+  /// An assortment of different objects and the seed they are expected to result in.
+  /// </summary>
+  private static IEnumerable<(object seedObject, ulong expectedSeed)> SeedObjectsAndSeeds =>
+    new[]
+    {
+      "some string",
+      true,
+      new object(),
+      new { Name = "Horst", Number = 1337 },
+      (int[]) [1, 2, 3, 4, 5],
+    }.Select(obj => (obj, unchecked((ulong)obj.GetHashCode())));
 
-  private static IEnumerable<Action<RandomNumberGenerator8Byte>> StateChangingActions()
-  {
-    yield return rng => rng.NextULong();
-    yield return rng => rng.NextFloat();
-    yield return rng => rng.NextDouble();
-  }
-  
-  private static IEnumerable<Func<ulong, RandomNumberGenerator8Byte>> StateSettingConstructors()
-  {
-    yield return state => new RandomNumberGenerator8Byte(0xFU, state);
-    yield return state => new RandomNumberGenerator8Byte(0xBEEF, state);
-    yield return state => new RandomNumberGenerator8Byte(new {}, state);
-  }
-  
+  /// <summary>
+  /// All constructors that create a RandomNumberGenerator8Byte with specific state.
+  /// </summary>
+  private static IEnumerable<Func<ulong, RandomNumberGenerator8Byte>> StateSettingConstructors =>
+  [
+    state => new RandomNumberGenerator8Byte(0xFU, state),
+    state => new RandomNumberGenerator8Byte(0xBEEF, state),
+    state => new RandomNumberGenerator8Byte(new { }, state),
+  ];
+
+  /// <summary>
+  /// Actions on a RandomNumberGenerator8Byte that should increase its state when executed.
+  /// </summary>
+  private static IEnumerable<Action<RandomNumberGenerator8Byte>> StateChangingActions =>
+  [
+    rng => rng.NextULong(),
+    rng => rng.NextDouble(),
+  ];
+
   [Test]
-  public void DefaultSeedAndState_AreZero()
+  public void DefaultSeedAndStateAreZero()
   {
     // ARRANGE
     var rng = new RandomNumberGenerator8Byte();
@@ -34,44 +45,44 @@ public class RandomNumberGenerator8ByteTests
     // ASSERT
     Assert.Multiple(() =>
     {
-      Assert.That(rng.Seed, Is.EqualTo(0));
-      Assert.That(rng.State, Is.EqualTo(0));
+      rng.Seed.Should().Be(0);
+      rng.State.Should().Be(0);
     });
   }
   
   [TestCase(0u)]
   [TestCase(0xBAD_FU)]
-  [TestCase(uint.MaxValue)]
-  public void ConstructorWithUIntSeed_SeedIsSetCorrectly(uint seed)
+  [TestCase(ulong.MaxValue)]
+  public void ConstructorWithUIntSeed_SeedIsSetCorrectly(ulong seed)
   {
     // ACT
     var rng = new RandomNumberGenerator8Byte(seed);
     
     // ASSERT
-    Assert.That(rng.Seed, Is.EqualTo(seed));
+    rng.Seed.Should().Be(seed);
   }
   
   [TestCase(0, 0u)]
-  [TestCase(-1, uint.MaxValue)]
-  [TestCase(int.MinValue, 0x80000000)]
-  public void ConstructorWithIntSeed_SeedIsSetCorrectly(int seed, uint expectedSeed)
+  [TestCase(-1, ulong.MaxValue)]
+  [TestCase(int.MinValue, 0xFFFFFFFF80000000)]
+  [TestCase(long.MinValue, 0x8000000000000000)]
+  public void ConstructorWithIntSeed_SeedIsSetCorrectly(long seed, ulong expectedSeed)
   {
     // ACT
     var rng = new RandomNumberGenerator8Byte(seed);
     
     // ASSERT
-    Assert.That(rng.Seed, Is.EqualTo(expectedSeed));
+    rng.Seed.Should().Be(expectedSeed);
   }
 
-  [TestCaseSource(nameof(SeedObjects))]
-  public void ConstructorWithObjectSeed_SeedIsSetToHashCode(object obj)
+  [TestCaseSource(nameof(SeedObjectsAndSeeds))]
+  public void ConstructorWithObjectSeed_SeedIsSetToHashCode((object seedObject, ulong expectedSeed) data)
   {
     // ACT
-    var rng = new RandomNumberGenerator8Byte(obj);
-    var expectedHashCode = unchecked((uint)obj.GetHashCode());
+    var rng = new RandomNumberGenerator8Byte(data.seedObject);
     
     // ASSERT
-    Assert.That(rng.Seed, Is.EqualTo(expectedHashCode));
+    rng.Seed.Should().Be(data.expectedSeed);
   }
 
   [Test]
@@ -81,39 +92,40 @@ public class RandomNumberGenerator8ByteTests
     var rng = new RandomNumberGenerator8Byte(null);
     
     // ASSERT
-    Assert.That(rng.Seed, Is.EqualTo(0));
+    rng.Seed.Should().Be(0);
   }
-  
+
   [TestCaseSource(nameof(StateSettingConstructors))]
-  public void AnyConstructor_StateIsSet(Func<ulong, RandomNumberGenerator8Byte> constructorMethod)
+  public void StateSettingConstructor_StateIsSet(Func<ulong, RandomNumberGenerator8Byte> constructorMethod)
   {
     // ARRANGE
-    const uint state = 0xC0FFEE;
+    const ulong state = 0xC0FFEE;
     
     // ACT
-    var rng = constructorMethod(state);
+    var rngInt = constructorMethod(state);
     
     // ASSERT
-    Assert.That(rng.State, Is.EqualTo(state));
+    rngInt.State.Should().Be(state);
   }
-  
+
   [Test]
   public void NextMethod_StateIsIncreased(
     [ValueSource(nameof(StateChangingActions))] Action<RandomNumberGenerator8Byte> action, 
-    [Values(0u, uint.MaxValue)] uint initialState)
+    [Values(0u, ulong.MaxValue)] ulong initialState)
   {
     // ARRANGE
     var rng = new RandomNumberGenerator8Byte(0xFU, initialState);
+    var expectedState = initialState + 1;
     
     // ACT
     action(rng);
     
     // ASSERT
-    Assert.That(rng.State, Is.EqualTo(initialState + 1));
+    rng.State.Should().Be(expectedState);
   }
   
   [Test]
-  public void SettingStateManually_DeterministicResult([Values(0u, 42u, 0xC0DEBEEF, uint.MaxValue)] uint state)
+  public void SettingStateManually_DeterministicResult([Values(0u, 42u, 0xC0DEBEEF, ulong.MaxValue)] ulong state)
   {
     // ARRANGE
     var rng = new RandomNumberGenerator8Byte(0xFU, state);
@@ -124,6 +136,6 @@ public class RandomNumberGenerator8ByteTests
     var result2 = rng.NextByte();
 
     // ASSERT
-    Assert.That(result1, Is.EqualTo(result2));
+    result1.Should().Be(result2);
   }
 }

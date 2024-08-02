@@ -23,9 +23,4 @@ public interface IRandomNumberGenerator
   /// Generates the next random float in [0,1).
   /// </summary>
   float NextFloat();
-
-  /// <summary>
-  /// Generates the next random double in [0,1).
-  /// </summary>
-  double NextDouble();
 }

@@ -97,13 +97,13 @@ public class Noise8ByteTests
   }
 
   [TestCaseSource(nameof(SeedObjectsAndSeeds))]
-  public void ObjectSeed_IsObjectHashCode((object seedObject, ulong expectedSeed) obj)
+  public void ObjectSeed_IsObjectHashCode((object seedObject, ulong expectedSeed) data)
   {
     // ARRANGE
-    var noise = new Noise8Byte(obj.seedObject);
+    var noise = new Noise8Byte(data.seedObject);
 
     // ASSERT
-    noise.Seed.Should().Be(obj.expectedSeed);
+    noise.Seed.Should().Be(data.expectedSeed);
   }
 
   [TestCaseSource(nameof(KnownValues))]

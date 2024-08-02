@@ -23,9 +23,4 @@ public interface IRandomNumberGenerator8Byte
   /// Generates the next random double.
   /// </summary>
   double NextDouble();
-
-  /// <summary>
-  /// Generates the next random float.
-  /// </summary>
-  float NextFloat();
 }

@@ -30,7 +30,7 @@ jobs:
       - name: Get Version
         id: get_version
         run: |
-          VERSION=$(dotnet list package --include-transitive | grep -m1 '${{ github.event.inputs.package_name }}' | awk '{print $3}')
+          VERSION=$(dotnet msbuild ./${{ github.event.inputs.package_name }}/${{ github.event.inputs.package_name }}.csproj -t:GetPackageVersion -nologo -v:q | grep -oP '(?<=Project/Package Version: ).*')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Pack

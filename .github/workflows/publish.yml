@@ -41,7 +41,7 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Pack
-        run: dotnet pack ./${{ github.event.inputs.package_name }}/$(github.event.inputs.package_name).csproj --configuration Release --output ./packages
+        run: dotnet pack ./${{ github.event.inputs.package_name }}/${{ github.event.inputs.package_name }}.csproj --configuration Release --output ./packages
 
       - name: Push to NuGet
         env:

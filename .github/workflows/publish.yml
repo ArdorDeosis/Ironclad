@@ -1,41 +1,49 @@
-﻿name: Publish Ironclad.Noise to NuGet
+﻿name: Publish to NuGet
 
 on:
   workflow_dispatch:
+    inputs:
+      package_name:
+        description: 'Select package to publish'
+        required: true
+        type: choice
+        options:
+          - Noise
+          - RandomNumbers
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-
-      - name: Set Up .NET
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '8.x'
-
-      - name: Run Ironclad.Noise.Tests
-        run: dotnet test ./Noise.Tests/Noise.Tests.csproj --configuration Release
-
   publish:
     runs-on: ubuntu-latest
-    needs: test  # This job will only run if the 'test' job succeeds
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set Up .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
 
+      - name: Run Tests
+        run: dotnet test ./${{ github.event.inputs.package_name }}.Tests/${{ github.event.inputs.package_name }}.Tests.csproj --configuration Release
+
+      - name: Get Version
+        id: get_version
+        run: |
+          VERSION=$(dotnet msbuild ./${{ github.event.inputs.package_name }}/${{ github.event.inputs.package_name }}.csproj -t:GetPackageVersion -nologo | grep -oP '[^\s]+')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Pack
-        run: dotnet pack ./Noise/Noise.csproj --configuration Release --output ./packages
+        run: dotnet pack ./${{ github.event.inputs.package_name }}/${{ github.event.inputs.package_name }}.csproj --configuration Release --output ./packages
 
       - name: Push to NuGet
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: dotnet nuget push ./packages/Ironclad.Noise.*.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push ./packages/Ironclad.${{ github.event.inputs.package_name }}.${{ env.VERSION }}.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json
+
+      - name: Set Version Tag
+        run: |
+          git tag ${{ github.event.inputs.package_name }}-v${{ env.VERSION }}
+          git push origin ${{ github.event.inputs.package_name }}-v${{ env.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

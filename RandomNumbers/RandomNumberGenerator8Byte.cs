@@ -59,8 +59,5 @@ public class RandomNumberGenerator8Byte : IRandomNumberGenerator8Byte
   public ulong NextULong() => noise.Raw(State++);
  
   /// <inheritdoc />
-  public float NextFloat() => (float)noise[State++];
-  
-  /// <inheritdoc />
   public double NextDouble() => noise[State++];
 }

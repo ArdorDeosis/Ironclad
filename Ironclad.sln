@@ -33,6 +33,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionItems", "{334358C5-0D3D-4F03-AF3D-C4AFC2250B32}"
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\publish.yml = .github\workflows\publish.yml
+		Directory.Build.targets = Directory.Build.targets
 	EndProjectSection
 EndProject
 Global

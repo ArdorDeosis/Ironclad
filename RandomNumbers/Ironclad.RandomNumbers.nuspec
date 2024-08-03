@@ -1,12 +1,13 @@
 ﻿<?xml version="1.0"?>
-<package >
-    <metadata>
-        <id>Ironclad.RandomNumbers</id>
-        <version>1.0.0</version>
-        <authors>Theobald Beyer</authors>
-        <owners>Theobald Beyer</owners>
-        <requireLicenseAcceptance>false</requireLicenseAcceptance>
-        <description>A random number generator library.</description>
-        <tags>random number generator</tags>
-    </metadata>
+<package>
+  <metadata>
+    <id>Ironclad.RandomNumbers</id>
+    <version>1.0.0-rc.001</version>
+    <authors>Theobald Beyer</authors>
+    <owners>Theobald Beyer</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A random number generator library.</description>
+    <copyright>© 2024 Theobald Beyer. All rights reserved.</copyright>
+    <tags>random number generator rng procedural generation ironclad</tags>
+  </metadata>
 </package>

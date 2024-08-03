@@ -32,8 +32,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noise.Analysis", "Noise.Ana
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionItems", "{334358C5-0D3D-4F03-AF3D-C4AFC2250B32}"
 	ProjectSection(SolutionItems) = preProject
-		.github\workflows\publish.yml = .github\workflows\publish.yml
 		Directory.Build.targets = Directory.Build.targets
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GithubWorkflows", "GithubWorkflows", "{6E0B85A8-3F7F-4C3A-BD49-5A17A0071610}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\run-unit-tests.yml = .github\workflows\run-unit-tests.yml
+		.github\workflows\publish-to-nuget.yml = .github\workflows\publish-to-nuget.yml
 	EndProjectSection
 EndProject
 Global

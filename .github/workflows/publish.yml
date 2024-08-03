@@ -1,4 +1,4 @@
-﻿name: Publish to NuGet
+﻿name: Publish Package to NuGet
 
 on:
   workflow_dispatch:
@@ -23,6 +23,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
+          
+      - name: Restore Dependencies
+        run: dotnet restore
 
       - name: Run Tests
         run: dotnet test ./${{ github.event.inputs.package_name }}.Tests/${{ github.event.inputs.package_name }}.Tests.csproj --configuration Release

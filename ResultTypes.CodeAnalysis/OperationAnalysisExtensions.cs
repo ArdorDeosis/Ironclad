@@ -93,7 +93,7 @@ internal static class OperationAnalysisExtensions
 	}
 
 	/// <summary>
-	/// Whether the given operation is an operation on a named symbol of a result type  (field, local parameter).
+	/// Whether the given operation is an operation on a named symbol of a result type (field, local parameter).
 	/// </summary>
 	/// <param name="operation">The operation to check.</param>
 	/// <param name="operationIdentifier">The type of the given operation on a result type.</param>

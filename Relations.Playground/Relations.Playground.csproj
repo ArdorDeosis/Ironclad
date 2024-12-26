@@ -1,20 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AssemblyName>Ironclad.Relations.Playground</AssemblyName>
         <RootNamespace>Ironclad.Relations.Playground</RootNamespace>
-        <LangVersion>11</LangVersion>
     </PropertyGroup>
-
-    <ItemGroup>
-      <PackageReference Include="PolySharp" Version="1.13.1">
-        <PrivateAssets>all</PrivateAssets>
-        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      </PackageReference>
-      <PackageReference Include="System.Collections.Immutable" Version="6.0.0" />
-    </ItemGroup>
 
 </Project>

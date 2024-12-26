@@ -16,8 +16,7 @@ public sealed class SetDictionary<TKey, TValue> where TKey : notnull
 
 	public bool Add(TKey key, TValue value)
 	{
-		if (!dictionary.ContainsKey(key))
-			dictionary.Add(key, new HashSet<TValue>());
+		dictionary.TryAdd(key, []);
 		var result = dictionary[key].Add(value);
 		unchecked
 		{
